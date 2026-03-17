@@ -1,0 +1,18 @@
+.page {
+  max-width: var(--container-narrow);
+  margin: 0 auto;
+  padding: var(--section-py) var(--container-px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.title {
+  font-size: var(--text-4xl);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-tight);
+}
+
+.sub {
+  color: var(--color-text-secondary);
+}
