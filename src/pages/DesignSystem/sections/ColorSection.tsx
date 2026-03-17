@@ -44,6 +44,16 @@ const SEMANTIC_TOKENS = [
   '--color-error',
 ]
 
+// ── Component-specific token groups ──────────────────────────────────────────
+// Add a new entry here whenever a component introduces its own color tokens.
+const PROMPT_TOKENS = [
+  '--color-prompt-bg',
+  '--color-prompt-bg-hover',
+  '--color-prompt-accent',
+  '--color-prompt-ink',
+  '--color-prompt-border',
+]
+
 export default function ColorSection() {
   const [groups, setGroups] = useState<ColorGroup[]>([])
 
@@ -54,6 +64,10 @@ export default function ColorSection() {
       {
         label: 'Semantic',
         tokens: SEMANTIC_TOKENS.map(name => ({ name, value: resolveVar(name) })),
+      },
+      {
+        label: 'ButtonPrompt',
+        tokens: PROMPT_TOKENS.map(name => ({ name, value: resolveVar(name) })),
       },
     ])
   }, [])
