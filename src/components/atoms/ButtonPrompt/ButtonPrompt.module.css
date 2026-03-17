@@ -1,0 +1,55 @@
+/* ── Base ── */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  background-color: var(--color-prompt-bg);
+  border: 1px solid transparent;
+  font-family: var(--font-prompt);
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--easing-default),
+    border-color var(--duration-fast) var(--easing-default);
+}
+
+.button:hover {
+  background-color: var(--color-prompt-bg-hover);
+}
+
+.button:active {
+  background-color: var(--color-prompt-bg);
+}
+
+/* ── Active / selected state ── */
+.active {
+  border-color: var(--color-prompt-border);
+}
+
+/* ── Sizes ── */
+.sm {
+  /* 32px tall: 8px × 2 + 16px line-height */
+  padding: 8px 12px;
+  gap: 2px;
+  font-size: 0.75rem;   /* 12px */
+  line-height: 1rem;    /* 16px */
+}
+
+.big {
+  /* 44px tall: 13px × 2 + 18px line-height */
+  padding: 13px 16px;
+  gap: 3px;
+  font-size: 0.875rem;  /* 14px */
+  line-height: 1.125rem; /* 18px */
+}
+
+/* ── Inner text ── */
+.label {
+  color: var(--color-prompt-ink);
+}
+
+.accent {
+  color: var(--color-prompt-accent);
+}

@@ -1,7 +1,9 @@
 :root {
   /* Font families */
-  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  --font-sans:   'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono:   'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  /* "Asta Sans" is the design's custom typeface — self-host and declare @font-face in global.css */
+  --font-prompt: 'Asta Sans', system-ui, sans-serif;
 
   /* Font sizes */
   --text-xs:   0.75rem;    /* 12px */
