@@ -47,4 +47,11 @@
   --color-success:        #22c55e;
   --color-warning:        #f59e0b;
   --color-error:          #ef4444;
+
+  /* ── Prompt button (from Figma "Button / Prompt") ── */
+  --color-prompt-bg:        #ebffc2;
+  --color-prompt-bg-hover:  #daff99;
+  --color-prompt-accent:    #80c800;
+  --color-prompt-ink:       #1e1e1e;
+  --color-prompt-border:    #e9ebeb;
 }
