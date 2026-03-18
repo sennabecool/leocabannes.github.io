@@ -25,36 +25,36 @@ export default function AtomsSection() {
 
         {/* Live editor */}
         <div className={atomStyles.liveEditor}>
-          <div className={atomStyles.liveFields}>
-            <label className={atomStyles.field}>
-              <span className={atomStyles.fieldLabel}>prefix</span>
-              <input
-                className={atomStyles.fieldInput}
-                value={testPrefix}
-                onChange={e => setTestPrefix(e.target.value)}
-                placeholder="prefix"
-              />
-            </label>
-            <label className={atomStyles.field}>
-              <span className={atomStyles.fieldLabel}>label</span>
-              <input
-                className={atomStyles.fieldInput}
-                value={testLabel}
-                onChange={e => setTestLabel(e.target.value)}
-                placeholder="label"
-              />
-            </label>
-            <label className={atomStyles.field}>
-              <span className={atomStyles.fieldLabel}>suffix</span>
-              <input
-                className={atomStyles.fieldInput}
-                value={testSuffix}
-                onChange={e => setTestSuffix(e.target.value)}
-                placeholder="suffix"
-              />
-            </label>
-          </div>
           <div className={styles.previewStage}>
+            <div className={atomStyles.liveFields}>
+              <label className={atomStyles.field}>
+                <span className={atomStyles.fieldLabel}>prefix</span>
+                <input
+                  className={atomStyles.fieldInput}
+                  value={testPrefix}
+                  onChange={e => setTestPrefix(e.target.value)}
+                  placeholder="prefix"
+                />
+              </label>
+              <label className={atomStyles.field}>
+                <span className={atomStyles.fieldLabel}>label</span>
+                <input
+                  className={atomStyles.fieldInput}
+                  value={testLabel}
+                  onChange={e => setTestLabel(e.target.value)}
+                  placeholder="label"
+                />
+              </label>
+              <label className={atomStyles.field}>
+                <span className={atomStyles.fieldLabel}>suffix</span>
+                <input
+                  className={atomStyles.fieldInput}
+                  value={testSuffix}
+                  onChange={e => setTestSuffix(e.target.value)}
+                  placeholder="suffix"
+                />
+              </label>
+            </div>
             <ButtonPrompt
               label={testLabel}
               prefix={testPrefix || undefined}
