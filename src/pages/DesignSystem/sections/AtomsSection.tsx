@@ -13,9 +13,9 @@ function ComponentPreview({ title, children }: { title: string; children: React.
 }
 
 export default function AtomsSection() {
-  const [testPrefix, setTestPrefix] = useState('/')
-  const [testLabel, setTestLabel] = useState('explore')
-  const [testSuffix, setTestSuffix] = useState('→')
+  const [testPrefix, setTestPrefix] = useState('Tell me more')
+  const [testLabel, setTestLabel] = useState('about')
+  const [testSuffix, setTestSuffix] = useState('yourself')
 
   return (
     <section id="atoms" className={styles.section}>
@@ -37,7 +37,7 @@ export default function AtomsSection() {
                 className={atomStyles.fieldInput}
                 value={testPrefix}
                 onChange={e => setTestPrefix(e.target.value)}
-                placeholder="/"
+                placeholder="Tell me more"
               />
             </label>
             <label className={atomStyles.field}>
@@ -46,7 +46,7 @@ export default function AtomsSection() {
                 className={atomStyles.fieldInput}
                 value={testLabel}
                 onChange={e => setTestLabel(e.target.value)}
-                placeholder="button"
+                placeholder="about"
               />
             </label>
             <label className={atomStyles.field}>
@@ -55,7 +55,7 @@ export default function AtomsSection() {
                 className={atomStyles.fieldInput}
                 value={testSuffix}
                 onChange={e => setTestSuffix(e.target.value)}
-                placeholder="→"
+                placeholder="yourself"
               />
             </label>
           </div>
