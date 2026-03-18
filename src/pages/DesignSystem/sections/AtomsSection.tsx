@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { ButtonPrompt } from '@components/atoms/ButtonPrompt'
 import styles from './sections.module.css'
 import atomStyles from './AtomsSection.module.css'
@@ -12,6 +13,10 @@ function ComponentPreview({ title, children }: { title: string; children: React.
 }
 
 export default function AtomsSection() {
+  const [testPrefix, setTestPrefix] = useState('/')
+  const [testLabel, setTestLabel] = useState('explore')
+  const [testSuffix, setTestSuffix] = useState('→')
+
   return (
     <section id="atoms" className={styles.section}>
       <h2 className={styles.sectionTitle}>Atoms</h2>
@@ -23,15 +28,42 @@ export default function AtomsSection() {
         <ButtonPrompt label="starts open" prefix="~" suffix="*" defaultExpanded />
       </ComponentPreview>
 
-      <ComponentPreview title="ButtonPrompt — transition animation test">
-        <div className={atomStyles.animTestRow}>
+      <ComponentPreview title="ButtonPrompt — live editor">
+        <div className={atomStyles.liveEditor}>
+          <div className={atomStyles.liveFields}>
+            <label className={atomStyles.field}>
+              <span className={atomStyles.fieldLabel}>prefix</span>
+              <input
+                className={atomStyles.fieldInput}
+                value={testPrefix}
+                onChange={e => setTestPrefix(e.target.value)}
+                placeholder="/"
+              />
+            </label>
+            <label className={atomStyles.field}>
+              <span className={atomStyles.fieldLabel}>label</span>
+              <input
+                className={atomStyles.fieldInput}
+                value={testLabel}
+                onChange={e => setTestLabel(e.target.value)}
+                placeholder="button"
+              />
+            </label>
+            <label className={atomStyles.field}>
+              <span className={atomStyles.fieldLabel}>suffix</span>
+              <input
+                className={atomStyles.fieldInput}
+                value={testSuffix}
+                onChange={e => setTestSuffix(e.target.value)}
+                placeholder="→"
+              />
+            </label>
+          </div>
           <ButtonPrompt
-            label="click me"
-            prefix="prefix"
-            suffix="suffix"
-            className={atomStyles.animTestButton}
+            label={testLabel}
+            prefix={testPrefix || undefined}
+            suffix={testSuffix || undefined}
           />
-          <p className={atomStyles.animTestHint}>← click to expand / collapse</p>
         </div>
       </ComponentPreview>
     </section>

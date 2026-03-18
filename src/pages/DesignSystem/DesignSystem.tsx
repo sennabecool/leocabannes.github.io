@@ -8,13 +8,17 @@ import OrganismsSection from './sections/OrganismsSection'
 import styles from './DesignSystem.module.css'
 
 const NAV_ITEMS = [
-  { href: '#colors',     label: 'Colors' },
-  { href: '#typography', label: 'Typography' },
-  { href: '#spacing',    label: 'Spacing' },
-  { href: '#atoms',      label: 'Atoms' },
-  { href: '#molecules',  label: 'Molecules' },
-  { href: '#organisms',  label: 'Organisms' },
+  { id: 'colors',     label: 'Colors' },
+  { id: 'typography', label: 'Typography' },
+  { id: 'spacing',    label: 'Spacing' },
+  { id: 'atoms',      label: 'Atoms' },
+  { id: 'molecules',  label: 'Molecules' },
+  { id: 'organisms',  label: 'Organisms' },
 ]
+
+function scrollTo(id: string) {
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
+}
 
 export default function DesignSystem() {
   return (
@@ -28,8 +32,13 @@ export default function DesignSystem() {
           <nav>
             <ul className={styles.navList}>
               {NAV_ITEMS.map(item => (
-                <li key={item.href}>
-                  <a href={item.href} className={styles.navItem}>{item.label}</a>
+                <li key={item.id}>
+                  <button
+                    className={styles.navItem}
+                    onClick={() => scrollTo(item.id)}
+                  >
+                    {item.label}
+                  </button>
                 </li>
               ))}
             </ul>

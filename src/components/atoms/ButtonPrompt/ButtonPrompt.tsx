@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { ButtonHTMLAttributes } from 'react'
 import styles from './ButtonPrompt.module.css'
 
@@ -26,19 +26,44 @@ export function ButtonPrompt({
   const [expanded, setExpanded] = useState(defaultExpanded)
   const [displayedPrefix, setDisplayedPrefix] = useState(defaultExpanded ? (prefix ?? '') : '')
   const [displayedSuffix, setDisplayedSuffix] = useState(defaultExpanded ? (suffix ?? '') : '')
+  const prevExpanded = useRef(defaultExpanded)
 
   useEffect(() => {
+    const wasExpanded = prevExpanded.current
+    prevExpanded.current = expanded
+
+    const fullPrefix = prefix ?? ''
+    const fullSuffix = suffix ?? ''
+    const maxLen = Math.max(fullPrefix.length, fullSuffix.length)
+
     if (!expanded) {
+      if (wasExpanded) {
+        // Collapsing — animate out
+        if (maxLen === 0) return
+        let i = maxLen
+        const id = setInterval(() => {
+          i--
+          setDisplayedPrefix(fullPrefix.slice(0, i))
+          setDisplayedSuffix(fullSuffix.slice(0, i))
+          if (i <= 0) clearInterval(id)
+        }, CHAR_INTERVAL_MS)
+        return () => clearInterval(id)
+      }
+      // Already collapsed (initial mount or prop change) — clear instantly
       setDisplayedPrefix('')
       setDisplayedSuffix('')
       return
     }
 
-    const fullPrefix = prefix ?? ''
-    const fullSuffix = suffix ?? ''
-    const maxLen = Math.max(fullPrefix.length, fullSuffix.length)
-    if (maxLen === 0) return
+    if (wasExpanded) {
+      // Already expanded (initial mount with defaultExpanded, or prop change) — show full instantly
+      setDisplayedPrefix(fullPrefix)
+      setDisplayedSuffix(fullSuffix)
+      return
+    }
 
+    // Expanding — animate in
+    if (maxLen === 0) return
     let i = 0
     const id = setInterval(() => {
       i++
