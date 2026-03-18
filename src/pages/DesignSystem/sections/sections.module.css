@@ -109,6 +109,40 @@
   gap: var(--space-1);
 }
 
+/* ── Text styles ── */
+.textStyleRow {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.textStyleRow:last-child {
+  border-bottom: none;
+}
+
+.textStyleMeta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.textStyleName {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.textStyleTokens {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: var(--space-1);
+}
+
 /* ── Spacing ── */
 .spaceScale {
   display: flex;

@@ -15,16 +15,6 @@ function resolveVar(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
 }
 
-function makeGroup(label: string, prefix: string, steps: (number | string)[]): ColorGroup {
-  return {
-    label,
-    tokens: steps.map(step => {
-      const name = `${prefix}${step}`
-      return { name, value: resolveVar(name) }
-    }),
-  }
-}
-
 const SEMANTIC_TOKENS = [
   '--color-bg-base',
   '--color-bg-subtle',
@@ -59,8 +49,29 @@ export default function ColorSection() {
 
   useEffect(() => {
     setGroups([
-      makeGroup('Neutrals', '--color-neutral-', [0, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950]),
-      makeGroup('Brand', '--color-brand-', [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950]),
+      {
+        label: 'Neutrals',
+        tokens: [0, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950].map(step => {
+          const name = `--color-neutral-${step}`
+          return { name, value: resolveVar(name) }
+        }),
+      },
+      {
+        label: 'Neon',
+        tokens: [
+          '--color-neon-light',
+          '--color-neon-subtle',
+          '--color-neon',
+          '--color-neon-dark',
+        ].map(name => ({ name, value: resolveVar(name) })),
+      },
+      {
+        label: 'Ink & Surface',
+        tokens: ['--color-black', '--color-grey'].map(name => ({
+          name,
+          value: resolveVar(name),
+        })),
+      },
       {
         label: 'Semantic',
         tokens: SEMANTIC_TOKENS.map(name => ({ name, value: resolveVar(name) })),

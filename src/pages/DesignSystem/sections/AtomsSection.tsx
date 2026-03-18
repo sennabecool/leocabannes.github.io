@@ -3,15 +3,6 @@ import { ButtonPrompt } from '@components/atoms/ButtonPrompt'
 import styles from './sections.module.css'
 import atomStyles from './AtomsSection.module.css'
 
-function ComponentPreview({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className={styles.preview}>
-      <h3 className={styles.previewTitle}>{title}</h3>
-      <div className={styles.previewStage}>{children}</div>
-    </div>
-  )
-}
-
 export default function AtomsSection() {
   const [testPrefix, setTestPrefix] = useState('Tell me more')
   const [testLabel, setTestLabel] = useState('about')
@@ -21,14 +12,18 @@ export default function AtomsSection() {
     <section id="atoms" className={styles.section}>
       <h2 className={styles.sectionTitle}>Atoms</h2>
 
-      <ComponentPreview title="ButtonPrompt — click to expand">
-        <ButtonPrompt label="explore" prefix="/" suffix="→" />
-        <ButtonPrompt label="search" prefix="⌘" suffix="K" />
-        <ButtonPrompt label="active" prefix="/" suffix="→" isActive />
-        <ButtonPrompt label="starts open" prefix="~" suffix="*" defaultExpanded />
-      </ComponentPreview>
+      <div className={styles.preview}>
+        <h3 className={styles.previewTitle}>ButtonPrompt</h3>
 
-      <ComponentPreview title="ButtonPrompt — live editor">
+        {/* Static variants */}
+        <div className={styles.previewStage}>
+          <ButtonPrompt label="explore" prefix="/" suffix="→" />
+          <ButtonPrompt label="search" prefix="⌘" suffix="K" />
+          <ButtonPrompt label="active" prefix="/" suffix="→" isActive />
+          <ButtonPrompt label="starts open" prefix="~" suffix="*" defaultExpanded />
+        </div>
+
+        {/* Live editor */}
         <div className={atomStyles.liveEditor}>
           <div className={atomStyles.liveFields}>
             <label className={atomStyles.field}>
@@ -37,7 +32,7 @@ export default function AtomsSection() {
                 className={atomStyles.fieldInput}
                 value={testPrefix}
                 onChange={e => setTestPrefix(e.target.value)}
-                placeholder="Tell me more"
+                placeholder="prefix"
               />
             </label>
             <label className={atomStyles.field}>
@@ -46,7 +41,7 @@ export default function AtomsSection() {
                 className={atomStyles.fieldInput}
                 value={testLabel}
                 onChange={e => setTestLabel(e.target.value)}
-                placeholder="about"
+                placeholder="label"
               />
             </label>
             <label className={atomStyles.field}>
@@ -55,17 +50,19 @@ export default function AtomsSection() {
                 className={atomStyles.fieldInput}
                 value={testSuffix}
                 onChange={e => setTestSuffix(e.target.value)}
-                placeholder="yourself"
+                placeholder="suffix"
               />
             </label>
           </div>
-          <ButtonPrompt
-            label={testLabel}
-            prefix={testPrefix || undefined}
-            suffix={testSuffix || undefined}
-          />
+          <div className={styles.previewStage}>
+            <ButtonPrompt
+              label={testLabel}
+              prefix={testPrefix || undefined}
+              suffix={testSuffix || undefined}
+            />
+          </div>
         </div>
-      </ComponentPreview>
+      </div>
     </section>
   )
 }

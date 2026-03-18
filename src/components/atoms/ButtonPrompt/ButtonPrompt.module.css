@@ -6,15 +6,15 @@
   border-radius: var(--radius-full);
   background-color: var(--color-prompt-bg);
   border: 1px solid transparent;
-  font-family: var(--font-prompt);
-  font-weight: var(--weight-semibold);
+  font-family: var(--btn-sm-family);
+  font-weight: var(--btn-sm-weight);
   white-space: nowrap;
   cursor: pointer;
 
   /* Collapsed sizing */
   padding: 8px 12px;
-  font-size: 0.75rem;   /* 12px */
-  line-height: 1rem;    /* 16px */
+  font-size: var(--btn-sm-size);
+  line-height: var(--btn-sm-leading);
 
   transition:
     background-color var(--duration-fast) var(--easing-default),
@@ -39,8 +39,8 @@
 /* ── Expanded (big) state ── */
 .expanded {
   padding: 13px 16px;
-  font-size: 0.875rem;  /* 14px */
-  line-height: 1.125rem; /* 18px */
+  font-size: var(--btn-lg-size);
+  line-height: var(--btn-lg-leading);
 }
 
 /* ── Prefix / suffix ── */

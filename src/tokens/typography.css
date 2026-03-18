@@ -40,4 +40,17 @@
   --tracking-wide:     0.025em;
   --tracking-wider:    0.05em;
   --tracking-widest:   0.1em;
+
+  /* ── Text styles — ButtonPrompt ── */
+  /* btn-sm  — collapsed state (default) */
+  --btn-sm-family:  var(--font-prompt);
+  --btn-sm-size:    0.75rem;   /* 12px */
+  --btn-sm-leading: 1rem;      /* 16px */
+  --btn-sm-weight:  var(--weight-semibold);
+
+  /* btn-lg  — expanded (big) state */
+  --btn-lg-family:  var(--font-prompt);
+  --btn-lg-size:    0.875rem;  /* 14px */
+  --btn-lg-leading: 1.125rem;  /* 18px */
+  --btn-lg-weight:  var(--weight-semibold);
 }

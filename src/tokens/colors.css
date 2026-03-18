@@ -1,5 +1,5 @@
 :root {
-  /* ── Primitives ── */
+  /* ── Primitives — Neutrals ── */
   --color-neutral-0:    #ffffff;
   --color-neutral-50:   #f9fafb;
   --color-neutral-100:  #f3f4f6;
@@ -13,18 +13,15 @@
   --color-neutral-900:  #111827;
   --color-neutral-950:  #030712;
 
-  /* Brand — fill in from Figma when designs arrive */
-  --color-brand-50:   #eff6ff;
-  --color-brand-100:  #dbeafe;
-  --color-brand-200:  #bfdbfe;
-  --color-brand-300:  #93c5fd;
-  --color-brand-400:  #60a5fa;
-  --color-brand-500:  #3b82f6;
-  --color-brand-600:  #2563eb;
-  --color-brand-700:  #1d4ed8;
-  --color-brand-800:  #1e40af;
-  --color-brand-900:  #1e3a8a;
-  --color-brand-950:  #172554;
+  /* ── Primitives — Neon ── */
+  --color-neon-light:  #ebffc2;  /* Light Neon Green  */
+  --color-neon-subtle: #daff99;  /* Subtle Neon Green */
+  --color-neon:        #80c800;  /* Neon Green        */
+  --color-neon-dark:   #4c7600;  /* Dark Neon Green   */
+
+  /* ── Primitives — Ink & Surface ── */
+  --color-black: #1e1e1e;  /* Black */
+  --color-grey:  #e9ebeb;  /* Grey  */
 
   /* ── Semantic ── (components reference only these) */
   --color-bg-base:        var(--color-neutral-0);
@@ -39,19 +36,19 @@
   --color-border:         var(--color-neutral-200);
   --color-border-strong:  var(--color-neutral-300);
 
-  --color-accent:         var(--color-brand-500);
-  --color-accent-hover:   var(--color-brand-600);
-  --color-accent-muted:   var(--color-brand-50);
-  --color-accent-text:    var(--color-brand-700);
+  --color-accent:         var(--color-neon);
+  --color-accent-hover:   var(--color-neon-dark);
+  --color-accent-muted:   var(--color-neon-light);
+  --color-accent-text:    var(--color-neon-dark);
 
   --color-success:        #22c55e;
   --color-warning:        #f59e0b;
   --color-error:          #ef4444;
 
-  /* ── Prompt button (from Figma "Button / Prompt") ── */
-  --color-prompt-bg:        #ebffc2;
-  --color-prompt-bg-hover:  #daff99;
-  --color-prompt-accent:    #80c800;
-  --color-prompt-ink:       #1e1e1e;
-  --color-prompt-border:    #e9ebeb;
+  /* ── Component — ButtonPrompt ── */
+  --color-prompt-bg:        var(--color-neon-light);
+  --color-prompt-bg-hover:  var(--color-neon-subtle);
+  --color-prompt-accent:    var(--color-neon);
+  --color-prompt-ink:       var(--color-black);
+  --color-prompt-border:    var(--color-grey);
 }

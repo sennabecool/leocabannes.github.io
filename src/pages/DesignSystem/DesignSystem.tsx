@@ -3,8 +3,6 @@ import ColorSection from './sections/ColorSection'
 import TypographySection from './sections/TypographySection'
 import SpacingSection from './sections/SpacingSection'
 import AtomsSection from './sections/AtomsSection'
-import MoleculesSection from './sections/MoleculesSection'
-import OrganismsSection from './sections/OrganismsSection'
 import styles from './DesignSystem.module.css'
 
 const NAV_ITEMS = [
@@ -12,8 +10,6 @@ const NAV_ITEMS = [
   { id: 'typography', label: 'Typography' },
   { id: 'spacing',    label: 'Spacing' },
   { id: 'atoms',      label: 'Atoms' },
-  { id: 'molecules',  label: 'Molecules' },
-  { id: 'organisms',  label: 'Organisms' },
 ]
 
 function scrollTo(id: string) {
@@ -50,8 +46,6 @@ export default function DesignSystem() {
         <TypographySection />
         <SpacingSection />
         <AtomsSection />
-        <MoleculesSection />
-        <OrganismsSection />
       </main>
     </div>
   )
