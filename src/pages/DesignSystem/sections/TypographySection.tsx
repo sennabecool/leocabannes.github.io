@@ -44,9 +44,15 @@ export default function TypographySection() {
         <h3 className={styles.groupTitle}>Font family</h3>
         <div className={styles.typeFamily}>
           <div>
-            <span className={styles.tokenName}>--font-prompt</span>
-            <p style={{ fontFamily: 'var(--font-prompt)', marginTop: 4 }}>
-              Tell me more about yourself
+            <span className={styles.tokenName}>--font-sans</span>
+            <p style={{ fontFamily: 'var(--font-sans)', marginTop: 4 }}>
+              Asta Sans — the quick brown fox jumps over the lazy dog
+            </p>
+          </div>
+          <div>
+            <span className={styles.tokenName}>--font-mono</span>
+            <p style={{ fontFamily: 'var(--font-mono)', marginTop: 4 }}>
+              JetBrains Mono — the quick brown fox jumps over the lazy dog
             </p>
           </div>
         </div>
