@@ -45,11 +45,18 @@ export default function ColorSection() {
       {groups.map(group => (
         <div key={group.label} className={styles.tokenGroup}>
           <h3 className={styles.groupTitle}>{group.label}</h3>
-          <div className={styles.colorList}>
+          <div className={styles.swatches}>
             {group.tokens.map(token => (
-              <div key={token.name} className={styles.colorRow}>
-                <span className={styles.tokenName}>{token.name}</span>
-                <span className={styles.tokenValue}>{token.value || '—'}</span>
+              <div key={token.name} className={styles.swatch}>
+                <div
+                  className={styles.swatchColor}
+                  style={{ backgroundColor: `var(${token.name})` }}
+                  title={token.value}
+                />
+                <div className={styles.swatchMeta}>
+                  <span className={styles.tokenName}>{token.name}</span>
+                  <span className={styles.tokenValue}>{token.value || '—'}</span>
+                </div>
               </div>
             ))}
           </div>
