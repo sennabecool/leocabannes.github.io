@@ -1,0 +1,15 @@
+.animTestRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.animTestButton {
+  /* Slightly larger click target for demo clarity */
+}
+
+.animTestHint {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
