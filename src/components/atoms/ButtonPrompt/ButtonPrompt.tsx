@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { ButtonHTMLAttributes } from 'react'
 import styles from './ButtonPrompt.module.css'
+
+const CHAR_INTERVAL_MS = 40
 
 export interface ButtonPromptProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   label?: string
@@ -22,6 +24,31 @@ export function ButtonPrompt({
   ...rest
 }: ButtonPromptProps) {
   const [expanded, setExpanded] = useState(defaultExpanded)
+  const [displayedPrefix, setDisplayedPrefix] = useState(defaultExpanded ? (prefix ?? '') : '')
+  const [displayedSuffix, setDisplayedSuffix] = useState(defaultExpanded ? (suffix ?? '') : '')
+
+  useEffect(() => {
+    if (!expanded) {
+      setDisplayedPrefix('')
+      setDisplayedSuffix('')
+      return
+    }
+
+    const fullPrefix = prefix ?? ''
+    const fullSuffix = suffix ?? ''
+    const maxLen = Math.max(fullPrefix.length, fullSuffix.length)
+    if (maxLen === 0) return
+
+    let i = 0
+    const id = setInterval(() => {
+      i++
+      setDisplayedPrefix(fullPrefix.slice(0, i))
+      setDisplayedSuffix(fullSuffix.slice(0, i))
+      if (i >= maxLen) clearInterval(id)
+    }, CHAR_INTERVAL_MS)
+
+    return () => clearInterval(id)
+  }, [expanded, prefix, suffix])
 
   function handleClick(e: React.MouseEvent<HTMLButtonElement>) {
     setExpanded(v => !v)
@@ -41,15 +68,15 @@ export function ButtonPrompt({
       onClick={handleClick}
       {...rest}
     >
-      {prefix && (
+      {prefix && displayedPrefix && (
         <span className={styles.prefixWrap}>
-          <span className={styles.prefixInner}>{prefix}</span>
+          <span className={styles.prefixInner}>{displayedPrefix}</span>
         </span>
       )}
       <span className={styles.label}>{label}</span>
-      {suffix && (
+      {suffix && displayedSuffix && (
         <span className={styles.suffixWrap}>
-          <span className={styles.suffixInner}>{suffix}</span>
+          <span className={styles.suffixInner}>{displayedSuffix}</span>
         </span>
       )}
     </button>
