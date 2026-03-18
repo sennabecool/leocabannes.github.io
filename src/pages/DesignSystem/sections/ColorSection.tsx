@@ -15,14 +15,6 @@ function resolveVar(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
 }
 
-const PROMPT_TOKENS = [
-  '--color-prompt-bg',
-  '--color-prompt-bg-hover',
-  '--color-prompt-accent',
-  '--color-prompt-ink',
-  '--color-prompt-border',
-]
-
 export default function ColorSection() {
   const [groups, setGroups] = useState<ColorGroup[]>([])
 
@@ -44,10 +36,6 @@ export default function ColorSection() {
           value: resolveVar(name),
         })),
       },
-      {
-        label: 'ButtonPrompt',
-        tokens: PROMPT_TOKENS.map(name => ({ name, value: resolveVar(name) })),
-      },
     ])
   }, [])
 
@@ -57,18 +45,11 @@ export default function ColorSection() {
       {groups.map(group => (
         <div key={group.label} className={styles.tokenGroup}>
           <h3 className={styles.groupTitle}>{group.label}</h3>
-          <div className={styles.swatches}>
+          <div className={styles.colorList}>
             {group.tokens.map(token => (
-              <div key={token.name} className={styles.swatch}>
-                <div
-                  className={styles.swatchColor}
-                  style={{ backgroundColor: `var(${token.name})` }}
-                  title={token.value}
-                />
-                <div className={styles.swatchMeta}>
-                  <span className={styles.tokenName}>{token.name}</span>
-                  <span className={styles.tokenValue}>{token.value || '—'}</span>
-                </div>
+              <div key={token.name} className={styles.colorRow}>
+                <span className={styles.tokenName}>{token.name}</span>
+                <span className={styles.tokenValue}>{token.value || '—'}</span>
               </div>
             ))}
           </div>

@@ -45,36 +45,16 @@
 }
 
 /* ── Colors ── */
-.swatches {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  gap: var(--space-3);
-}
-
-.swatch {
+.colorList {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
 }
 
-.swatchColor {
-  height: 48px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-}
-
-.swatchMeta {
+.colorRow {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  overflow: hidden;
-}
-
-.swatchMeta .tokenName,
-.swatchMeta .tokenValue {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  align-items: baseline;
+  gap: var(--space-6);
 }
 
 /* ── Typography ── */
