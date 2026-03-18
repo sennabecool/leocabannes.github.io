@@ -1,5 +1,6 @@
 import { ButtonPrompt } from '@components/atoms/ButtonPrompt'
 import styles from './sections.module.css'
+import atomStyles from './AtomsSection.module.css'
 
 function ComponentPreview({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -15,15 +16,23 @@ export default function AtomsSection() {
     <section id="atoms" className={styles.section}>
       <h2 className={styles.sectionTitle}>Atoms</h2>
 
-      <ComponentPreview title="ButtonPrompt — Small">
-        <ButtonPrompt size="sm" label="button" />
-        <ButtonPrompt size="sm" label="active" isActive />
+      <ComponentPreview title="ButtonPrompt — click to expand">
+        <ButtonPrompt label="explore" prefix="/" suffix="→" />
+        <ButtonPrompt label="search" prefix="⌘" suffix="K" />
+        <ButtonPrompt label="active" prefix="/" suffix="→" isActive />
+        <ButtonPrompt label="starts open" prefix="~" suffix="*" defaultExpanded />
       </ComponentPreview>
 
-      <ComponentPreview title="ButtonPrompt — Big">
-        <ButtonPrompt size="big" label="button" prefix="prefix" suffix="suffix" />
-        <ButtonPrompt size="big" label="button" prefix="prefix" suffix="suffix" isActive />
-        <ButtonPrompt size="big" label="button" />
+      <ComponentPreview title="ButtonPrompt — transition animation test">
+        <div className={atomStyles.animTestRow}>
+          <ButtonPrompt
+            label="click me"
+            prefix="prefix"
+            suffix="suffix"
+            className={atomStyles.animTestButton}
+          />
+          <p className={atomStyles.animTestHint}>← click to expand / collapse</p>
+        </div>
       </ComponentPreview>
     </section>
   )

@@ -1,45 +1,56 @@
+import { useState } from 'react'
 import type { ButtonHTMLAttributes } from 'react'
 import styles from './ButtonPrompt.module.css'
 
-type ButtonPromptSize = 'sm' | 'big'
-
 export interface ButtonPromptProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  size?: ButtonPromptSize
   label?: string
-  /** Big size only */
   prefix?: string
-  /** Big size only */
   suffix?: string
   isActive?: boolean
+  /** Start expanded. The component manages its own toggle state. */
+  defaultExpanded?: boolean
 }
 
 export function ButtonPrompt({
-  size = 'sm',
   label = 'button',
   prefix,
   suffix,
   isActive = false,
+  defaultExpanded = false,
   className,
+  onClick,
   ...rest
 }: ButtonPromptProps) {
+  const [expanded, setExpanded] = useState(defaultExpanded)
+
+  function handleClick(e: React.MouseEvent<HTMLButtonElement>) {
+    setExpanded(v => !v)
+    onClick?.(e)
+  }
+
   return (
     <button
       className={[
         styles.button,
-        styles[size],
+        expanded ? styles.expanded : '',
         isActive ? styles.active : '',
         className ?? '',
       ]
         .filter(Boolean)
         .join(' ')}
+      onClick={handleClick}
       {...rest}
     >
-      {size === 'big' && prefix && (
-        <span className={styles.accent}>{prefix}</span>
+      {prefix && (
+        <span className={styles.prefixWrap}>
+          <span className={styles.prefixInner}>{prefix}</span>
+        </span>
       )}
       <span className={styles.label}>{label}</span>
-      {size === 'big' && suffix && (
-        <span className={styles.accent}>{suffix}</span>
+      {suffix && (
+        <span className={styles.suffixWrap}>
+          <span className={styles.suffixInner}>{suffix}</span>
+        </span>
       )}
     </button>
   )
