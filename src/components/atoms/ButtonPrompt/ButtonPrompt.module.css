@@ -43,35 +43,12 @@
   line-height: 1.125rem; /* 18px */
 }
 
-/* ── Prefix / suffix wrappers — grid trick for width animation ── */
-.prefixWrap,
-.suffixWrap {
-  display: grid;
-  grid-template-columns: 0fr;
-  overflow: hidden;
-  transition: grid-template-columns var(--duration-slow) var(--easing-spring);
-}
-
-.expanded .prefixWrap,
-.expanded .suffixWrap {
-  grid-template-columns: 1fr;
-}
-
+/* ── Prefix / suffix ── */
 .prefixInner,
 .suffixInner {
-  overflow: hidden;
   color: var(--color-prompt-accent);
-  opacity: 0;
-  transition: opacity var(--duration-fast) var(--easing-default);
 }
 
-.expanded .prefixInner,
-.expanded .suffixInner {
-  opacity: 1;
-  transition-delay: 150ms;
-}
-
-/* Spacing between accents and label (lives inside overflow:hidden so it collapses too) */
 .prefixInner {
   padding-right: 4px;
 }
