@@ -1,0 +1,33 @@
+/* ─── Glitch-in ──────────────────────────────────────────────────────────────
+   Single-character entrance. Import this file globally so any CSS module
+   can reference the keyframe name directly.
+   ─────────────────────────────────────────────────────────────────────────── */
+@keyframes glitchIn {
+  0% {
+    opacity: 0;
+    transform: translate(-2px, 1px) skewX(25deg) scaleY(0.5);
+    filter: blur(4px);
+    color: #0ff;
+    text-shadow: 2px 0 #f04, -2px 0 #0ff;
+  }
+  25% {
+    opacity: 1;
+    transform: translate(2px, -1px) skewX(-10deg) scaleY(1.1);
+    color: #f04;
+    text-shadow: -1px 0 #0ff;
+    filter: blur(1px);
+  }
+  55% {
+    transform: translate(-1px, 0) skewX(4deg);
+    color: inherit;
+    text-shadow: none;
+    filter: none;
+  }
+  80% {
+    transform: skewX(-1deg);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}

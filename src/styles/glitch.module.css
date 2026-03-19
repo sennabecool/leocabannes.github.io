@@ -1,0 +1,5 @@
+/* Reusable glitch-in class. Requires animations.css to be loaded globally. */
+.glitchChar {
+  display: inline-block;
+  animation: glitchIn 110ms ease-out both;
+}
