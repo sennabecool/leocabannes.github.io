@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import type { ButtonHTMLAttributes } from 'react'
 import styles from './ButtonPrompt.module.css'
-import glitch from '../../../styles/glitch.module.css'
 
 const CHAR_INTERVAL_MS = 40
 
@@ -96,21 +95,13 @@ export function ButtonPrompt({
     >
       {prefix && displayedPrefix && (
         <span className={styles.prefixWrap}>
-          <span className={styles.prefixInner}>
-            {displayedPrefix.split('').map((char, idx) => (
-              <span key={idx} className={glitch.glitchChar}>{char}</span>
-            ))}
-          </span>
+          <span className={styles.prefixInner}>{displayedPrefix}</span>
         </span>
       )}
       <span className={styles.label}>{label}</span>
       {suffix && displayedSuffix && (
         <span className={styles.suffixWrap}>
-          <span className={styles.suffixInner}>
-            {displayedSuffix.split('').map((char, idx) => (
-              <span key={idx} className={glitch.glitchChar}>{char}</span>
-            ))}
-          </span>
+          <span className={styles.suffixInner}>{displayedSuffix}</span>
         </span>
       )}
     </button>

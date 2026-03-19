@@ -5,7 +5,6 @@ import App from './App'
 import './tokens/index.css'
 import './styles/reset.css'
 import './styles/global.css'
-import './styles/animations.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
