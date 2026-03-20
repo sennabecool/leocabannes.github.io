@@ -4,7 +4,7 @@ import styles from './ButtonPrompt.module.css'
 
 const CHAR_INTERVAL_MS = 40  // collapse erase speed
 const WRITE_MS    = 20   // phase 1: type all chars as glitches
-const CORRECT_MS  = 100  // phase 2: correct glitches one by one
+const CORRECT_MS  = 50   // phase 2: correct glitches one by one
 
 const LEET: Record<string, string> = {
   a: '4', e: '3', i: '1', o: '0', s: '5',
