@@ -4,7 +4,7 @@ import styles from './ButtonPrompt.module.css'
 
 const ERASE_MS          = 20  // collapse erase speed (per char)
 const WRITE_MS          = 20  // write head tick speed (per char)
-const CORRECT_MS        = 80  // correct head tick speed (per char)
+const CORRECT_MS        = 40  // correct head tick speed (per char)
 
 const LEET: Record<string, string> = {
   a: '4', e: '3', i: '1', o: '0', s: '5',
