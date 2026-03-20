@@ -61,77 +61,43 @@
   transition: opacity var(--duration-normal) var(--easing-out);
 }
 
-/* Dim placeholder when focused but nothing typed yet */
 .input:focus::placeholder {
   opacity: 0.35;
 }
 
-/* ── Expanded section — grid reveal animation ── */
-.expandedSection {
-  display: grid;
-  grid-template-rows: 0fr;
-  transition: grid-template-rows var(--duration-slower) var(--easing-spring);
-}
-
-.expandedOpen {
-  grid-template-rows: 1fr;
-}
-
-.expandedInner {
-  overflow: hidden;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;  /* buttons size to their content */
-  gap: 8px;
-  /* Top padding creates the 16px gap from input when revealed.
-     It's clipped (invisible) when the section is 0fr. */
-  padding-top: 16px;
-  padding-bottom: 4px;
-}
-
-/* ── Bottom bar ── */
-.bar {
+/* ── Prompt chips container ──
+   Collapsed: flex-direction row, max-height clips to one row.
+   Expanded:  flex-direction column, max-height opens up.
+   The max-height animation provides the smooth reveal;
+   the layout switch happens at t=0 while still clipped. ── */
+.chips {
   display: flex;
   flex-direction: row;
-  align-items: flex-end;
-  justify-content: flex-end;
-  gap: 4px;
-  margin-top: 16px;
-}
-
-/* ── Collapsed chips ── */
-.chipsWrap {
-  flex: 1;
-  min-width: 0;
-  position: relative;
-  overflow: hidden;
-  max-height: 32px;
-  opacity: 1;
-  transition:
-    max-height var(--duration-slower) var(--easing-spring),
-    opacity    var(--duration-fast)   var(--easing-out);
-}
-
-.chipsHidden {
-  max-height: 0;
-  opacity: 0;
-}
-
-.chipsScroll {
-  display: flex;
-  flex-direction: row;
+  flex-wrap: nowrap;
   gap: 8px;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
+  position: relative;
+  margin-top: 16px;
+  /* collapsed height = btn padding(8+8) + line-height(16) = 32px */
+  max-height: 32px;
+  transition: max-height var(--duration-slower) var(--easing-default);
 }
 
-.chipsScroll::-webkit-scrollbar {
+.chips::-webkit-scrollbar {
   display: none;
 }
 
-/* Right-edge overflow fade */
+.chipsOpen {
+  flex-direction: column;
+  align-items: flex-start;  /* buttons size to their own content */
+  overflow-x: hidden;
+  /* expanded height: 7 buttons × 44px + 6 gaps × 8px ≈ 356px */
+  max-height: 400px;
+}
+
+/* ── Right-edge fade (collapsed only) ── */
 .chipsFade {
   position: absolute;
   top: 0;
@@ -140,4 +106,11 @@
   height: 100%;
   background: linear-gradient(to left, var(--color-white) 0%, transparent 100%);
   pointer-events: none;
+}
+
+/* ── Bottom bar — ButtonMenu only, always below chips ── */
+.bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
 }

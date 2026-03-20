@@ -51,39 +51,23 @@ export function Navbar({ className, ...rest }: NavbarProps) {
           />
         </div>
 
-        {/* ── Expanded prompts — grid reveal, buttons animate via expanded prop ── */}
-        <div className={`${styles.expandedSection} ${open ? styles.expandedOpen : ''}`}>
-          <div className={styles.expandedInner}>
-            {PROMPTS.map(p => (
-              <ButtonPrompt
-                key={p.label}
-                prefix={p.prefix}
-                label={p.label}
-                suffix={p.suffix || undefined}
-                expanded={open}
-                onClick={stopProp}
-              />
-            ))}
-          </div>
+        {/* ── Single set of buttons: row when closed, column when open ── */}
+        <div className={`${styles.chips} ${open ? styles.chipsOpen : ''}`}>
+          {PROMPTS.map(p => (
+            <ButtonPrompt
+              key={p.label}
+              prefix={p.prefix}
+              label={p.label}
+              suffix={p.suffix || undefined}
+              expanded={open}
+              onClick={stopProp}
+            />
+          ))}
+          {!open && <div className={styles.chipsFade} aria-hidden />}
         </div>
 
-        {/* ── Bottom bar: collapsed chips (fade out when open) + menu button ── */}
+        {/* ── Menu button — always below the chips ── */}
         <div className={styles.bar}>
-          <div className={`${styles.chipsWrap} ${open ? styles.chipsHidden : ''}`}>
-            <div className={styles.chipsScroll}>
-              {PROMPTS.map(p => (
-                <ButtonPrompt
-                  key={p.label}
-                  label={p.label}
-                  expanded={false}
-                  onClick={stopProp}
-                />
-              ))}
-            </div>
-            <div className={styles.chipsFade} aria-hidden />
-          </div>
-
-          {/* ButtonMenu sits below the expanded prompts, always at bottom-right */}
           <ButtonMenu open={open} />
         </div>
 
