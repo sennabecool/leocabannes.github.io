@@ -7,8 +7,10 @@ const WRITE_MS          = 20  // write head tick speed (per char)
 const CORRECT_MS        = 40  // correct head tick speed (per char)
 
 const LEET: Record<string, string> = {
-  a: '4', e: '3', i: '1', o: '0', s: '5',
-  t: '7', l: '1', b: '8', g: '9', z: '2',
+  a: '@', b: '8', c: '₵', d: '₫', e: '3', f: 'f', g: '9', h: '#',
+  i: '!', j: 'j', k: '₭', l: '1', m: 'm', n: '₦', o: '0', p: '₱',
+  q: 'q', r: 'r', s: '5', t: '7', u: 'u', v: 'v', w: '₩', x: 'x',
+  y: '¥', z: '2',
 }
 const GLITCH_POOL = '#%&*?@!'
 
