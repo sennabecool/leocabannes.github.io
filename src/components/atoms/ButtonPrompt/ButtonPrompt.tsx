@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import type { ButtonHTMLAttributes } from 'react'
 import styles from './ButtonPrompt.module.css'
 
-const CHAR_INTERVAL_MS  = 40  // collapse erase speed
+const CHAR_INTERVAL_MS  = 80  // collapse erase speed
 const WRITE_MS          = 20  // expand tick speed
 const CORRECT_DELAY     = 3   // correction trails write head by N chars
 
