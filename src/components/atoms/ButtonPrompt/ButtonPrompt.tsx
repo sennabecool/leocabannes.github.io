@@ -37,18 +37,15 @@ export function ButtonPrompt({
 
     if (!expanded) {
       if (wasExpanded) {
-        // Collapsing — erase suffix first, then prefix
-        let suffixDone = fullSuffix.length === 0
-        let i = suffixDone ? fullPrefix.length : fullSuffix.length
+        // Collapsing — erase prefix and suffix simultaneously
+        const maxLen = Math.max(fullPrefix.length, fullSuffix.length)
+        if (maxLen === 0) return
+        let i = maxLen
         const id = setInterval(() => {
           i--
-          if (!suffixDone) {
-            setDisplayedSuffix(fullSuffix.slice(0, i))
-            if (i <= 0) { suffixDone = true; i = fullPrefix.length }
-          } else {
-            setDisplayedPrefix(fullPrefix.slice(0, i))
-            if (i <= 0) clearInterval(id)
-          }
+          setDisplayedPrefix(fullPrefix.slice(0, i))
+          setDisplayedSuffix(fullSuffix.slice(0, i))
+          if (i <= 0) clearInterval(id)
         }, CHAR_INTERVAL_MS)
         return () => clearInterval(id)
       }
