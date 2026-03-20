@@ -10,6 +10,7 @@ export * from './atoms/Icon'
 // export * from './atoms/Divider'
 
 // Molecules
+export * from './molecules/Navbar'
 // export * from './molecules/Card'
 // export * from './molecules/NavLink'
 // export * from './molecules/Tag'

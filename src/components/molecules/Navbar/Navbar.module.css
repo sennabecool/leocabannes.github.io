@@ -1,0 +1,146 @@
+/* ═══════════════════════════════════════════
+   Navbar molecule
+   ═══════════════════════════════════════════ */
+
+/* ── Outer frosted-glass pill ── */
+.navbar {
+  display: inline-block;
+  width: 100%;
+  max-width: 378px;
+  border-radius: 36px;
+  background-color: var(--color-navbar-glass);
+  box-shadow: var(--shadow-navbar);
+  padding: 12px;
+  cursor: pointer;
+  user-select: none;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.open {
+  cursor: default;
+}
+
+/* ── Inner white card ── */
+.chatbox {
+  background-color: var(--color-navbar-card);
+  border: 1px solid var(--color-navbar-card-border);
+  border-radius: var(--radius-2xl);   /* 24px */
+  padding: 20px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Input row ── */
+.promptRow {
+  padding: 0 4px;
+}
+
+.input {
+  background: none;
+  border: none;
+  outline: none;
+  padding: 0;
+  width: 100%;
+  font-family: var(--navbar-input-family);
+  font-size: var(--navbar-input-size);
+  line-height: var(--navbar-input-leading);
+  font-weight: var(--navbar-input-weight);
+  color: var(--color-navbar-input);
+  cursor: pointer;
+}
+
+.open .input {
+  cursor: text;
+}
+
+.input::placeholder {
+  color: var(--color-navbar-input);
+  opacity: 1;
+}
+
+/* ── Expanded section — grid reveal animation ── */
+.expandedSection {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition:
+    grid-template-rows var(--duration-slow) var(--easing-spring);
+}
+
+.expandedOpen {
+  grid-template-rows: 1fr;
+}
+
+.expandedInner {
+  overflow: hidden;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  /* Top padding creates the 16px gap from the prompt row when expanded.
+     It's clipped (invisible) when the section is 0fr. */
+  padding-top: 16px;
+  /* Bottom padding separates prompts from the bar */
+  padding-bottom: 4px;
+}
+
+.expandedPrompt {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+/* ── Bottom bar ── */
+.bar {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 4px;
+  /* 16px from the prompt row in collapsed; from the expandedInner in expanded */
+  margin-top: 16px;
+}
+
+/* ── Collapsed chips ── */
+.chipsWrap {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  /* Clip both the scroll content and the fade gradient */
+  overflow: hidden;
+  max-height: 32px;
+  opacity: 1;
+  transition:
+    max-height var(--duration-slow) var(--easing-spring),
+    opacity    var(--duration-fast) var(--easing-out);
+}
+
+.chipsHidden {
+  max-height: 0;
+  opacity: 0;
+}
+
+.chipsScroll {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.chipsScroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Right-edge overflow fade */
+.chipsFade {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 40px;
+  height: 100%;
+  background: linear-gradient(to left, white 0%, transparent 100%);
+  pointer-events: none;
+}

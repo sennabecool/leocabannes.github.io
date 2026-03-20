@@ -25,8 +25,9 @@ export interface ButtonPromptProps extends ButtonHTMLAttributes<HTMLButtonElemen
   prefix?: string
   suffix?: string
   isActive?: boolean
-  /** Start expanded. The component manages its own toggle state. */
   defaultExpanded?: boolean
+  /** Controlled expanded state. When provided, overrides internal toggle. */
+  expanded?: boolean
 }
 
 export function ButtonPrompt({
@@ -35,14 +36,24 @@ export function ButtonPrompt({
   suffix,
   isActive = false,
   defaultExpanded = false,
+  expanded: expandedProp,
   className,
   onClick,
   ...rest
 }: ButtonPromptProps) {
-  const [expanded, setExpanded] = useState(defaultExpanded)
-  const [displayedPrefix, setDisplayedPrefix] = useState(defaultExpanded ? (prefix ?? '') : '')
-  const [displayedSuffix, setDisplayedSuffix] = useState(defaultExpanded ? (suffix ?? '') : '')
-  const prevExpanded = useRef(defaultExpanded)
+  const isControlled = expandedProp !== undefined
+  const [internalExpanded, setInternalExpanded] = useState(
+    isControlled ? expandedProp! : defaultExpanded
+  )
+  const expanded = isControlled ? expandedProp! : internalExpanded
+
+  const [displayedPrefix, setDisplayedPrefix] = useState(
+    expanded ? (prefix ?? '') : ''
+  )
+  const [displayedSuffix, setDisplayedSuffix] = useState(
+    expanded ? (suffix ?? '') : ''
+  )
+  const prevExpanded = useRef(expanded)
 
   useEffect(() => {
     const wasExpanded = prevExpanded.current
@@ -65,21 +76,17 @@ export function ButtonPrompt({
         }, ERASE_MS)
         return () => clearInterval(id)
       }
-      // Already collapsed — clear instantly
       setDisplayedPrefix('')
       setDisplayedSuffix('')
       return
     }
 
     if (wasExpanded) {
-      // Already expanded — show full instantly
       setDisplayedPrefix(fullPrefix)
       setDisplayedSuffix(fullSuffix)
       return
     }
 
-    // Single interval: write head and correct head advance together,
-    // correct trails CORRECT_DELAY chars behind write.
     const totalLen = fullPrefix.length + fullSuffix.length
     if (totalLen === 0) return
 
@@ -116,7 +123,7 @@ export function ButtonPrompt({
   }, [expanded, prefix, suffix])
 
   function handleClick(e: React.MouseEvent<HTMLButtonElement>) {
-    setExpanded(v => !v)
+    if (!isControlled) setInternalExpanded(v => !v)
     onClick?.(e)
   }
 

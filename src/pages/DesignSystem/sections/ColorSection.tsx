@@ -36,6 +36,14 @@ export default function ColorSection() {
           value: resolveVar(name),
         })),
       },
+      {
+        label: 'Navbar',
+        tokens: [
+          '--color-navbar-card',
+          '--color-navbar-card-border',
+          '--color-navbar-input',
+        ].map(name => ({ name, value: resolveVar(name) })),
+      },
     ])
   }, [])
 

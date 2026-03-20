@@ -33,6 +33,22 @@ const TEXT_STYLES = [
       { token: '--btn-lg-weight',  value: '600' },
     ],
   },
+  {
+    name: 'navbar-input',
+    description: 'Navbar — prompt text field',
+    style: {
+      fontFamily: 'var(--navbar-input-family)',
+      fontSize: 'var(--navbar-input-size)',
+      lineHeight: 'var(--navbar-input-leading)',
+      fontWeight: 'var(--navbar-input-weight)',
+    },
+    tokens: [
+      { token: '--navbar-input-family',  value: 'Asta Sans' },
+      { token: '--navbar-input-size',    value: '16px' },
+      { token: '--navbar-input-leading', value: '24px' },
+      { token: '--navbar-input-weight',  value: '400' },
+    ],
+  },
 ]
 
 export default function TypographySection() {

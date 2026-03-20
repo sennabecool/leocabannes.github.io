@@ -52,4 +52,10 @@
   --btn-lg-size:    0.875rem;  /* 14px */
   --btn-lg-leading: 1.125rem;  /* 18px */
   --btn-lg-weight:  var(--weight-semibold);
+
+  /* navbar-input — prompt text field */
+  --navbar-input-family:  var(--font-sans);
+  --navbar-input-size:    1rem;      /* 16px */
+  --navbar-input-leading: 1.5rem;    /* 24px */
+  --navbar-input-weight:  var(--weight-regular);
 }

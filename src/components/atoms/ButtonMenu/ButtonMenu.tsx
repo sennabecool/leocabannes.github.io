@@ -24,17 +24,25 @@ function nextGlitchChar(char: string): string {
 
 export interface ButtonMenuProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   defaultOpen?: boolean
+  /** Controlled open state. When provided, overrides internal toggle. */
+  open?: boolean
 }
 
 export function ButtonMenu({
   defaultOpen = false,
+  open: openProp,
   className,
   onClick,
   ...rest
 }: ButtonMenuProps) {
-  const [open, setOpen] = useState(defaultOpen)
-  const [displayedLabel, setDisplayedLabel] = useState(defaultOpen ? LABEL : '')
-  const prevOpen = useRef(defaultOpen)
+  const isControlled = openProp !== undefined
+  const [internalOpen, setInternalOpen] = useState(
+    isControlled ? openProp! : defaultOpen
+  )
+  const open = isControlled ? openProp! : internalOpen
+
+  const [displayedLabel, setDisplayedLabel] = useState(open ? LABEL : '')
+  const prevOpen = useRef(open)
 
   useEffect(() => {
     const wasOpen = prevOpen.current
@@ -83,7 +91,7 @@ export function ButtonMenu({
   }, [open])
 
   function handleClick(e: React.MouseEvent<HTMLButtonElement>) {
-    setOpen(v => !v)
+    if (!isControlled) setInternalOpen(v => !v)
     onClick?.(e)
   }
 
