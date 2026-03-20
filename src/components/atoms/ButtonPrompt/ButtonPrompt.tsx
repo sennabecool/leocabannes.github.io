@@ -2,9 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import type { ButtonHTMLAttributes } from 'react'
 import styles from './ButtonPrompt.module.css'
 
-const CHAR_INTERVAL_MS = 40  // collapse erase speed
-const WRITE_MS    = 20   // phase 1: type all chars as glitches
-const CORRECT_MS  = 10   // phase 2: correct glitches one by one
+const CHAR_INTERVAL_MS  = 40  // collapse erase speed
+const WRITE_MS          = 20  // expand tick speed
+const CORRECT_DELAY     = 3   // correction trails write head by N chars
 
 const LEET: Record<string, string> = {
   a: '4', e: '3', i: '1', o: '0', s: '5',
@@ -76,37 +76,33 @@ export function ButtonPrompt({
       return
     }
 
-    // Phase 1 — write all chars fast as glitches (prefix then suffix)
-    // Phase 2 — correct glitches slowly left to right
+    // Single interval: write head and correct head advance together,
+    // correct trails CORRECT_DELAY chars behind write.
     const totalLen = fullPrefix.length + fullSuffix.length
     if (totalLen === 0) return
 
     const prefixGlitches = Array.from(fullPrefix, nextGlitchChar)
     const suffixGlitches = Array.from(fullSuffix, nextGlitchChar)
 
-    let phase2Id: ReturnType<typeof setInterval>
+    function buildDisplay(real: string, glitches: string[], from: number, to: number) {
+      return real.slice(0, from) + glitches.slice(from, to).join('')
+    }
+
     let writePos = 0
+    let correctPos = -CORRECT_DELAY
 
-    const phase1Id = setInterval(() => {
-      writePos++
-      setDisplayedPrefix(prefixGlitches.slice(0, Math.min(writePos, fullPrefix.length)).join(''))
-      setDisplayedSuffix(suffixGlitches.slice(0, Math.max(0, writePos - fullPrefix.length)).join(''))
-
-      if (writePos >= totalLen) {
-        clearInterval(phase1Id)
-        let correctPos = 0
-        phase2Id = setInterval(() => {
-          correctPos++
-          const pc = Math.min(correctPos, fullPrefix.length)
-          const sc = Math.max(0, correctPos - fullPrefix.length)
-          setDisplayedPrefix(fullPrefix.slice(0, pc) + prefixGlitches.slice(pc).join(''))
-          setDisplayedSuffix(fullSuffix.slice(0, sc) + suffixGlitches.slice(sc).join(''))
-          if (correctPos >= totalLen) clearInterval(phase2Id)
-        }, CORRECT_MS)
-      }
+    const id = setInterval(() => {
+      if (writePos < totalLen) writePos++
+      correctPos++
+      const cp = Math.max(0, correctPos)
+      setDisplayedPrefix(buildDisplay(fullPrefix, prefixGlitches,
+        Math.min(cp, fullPrefix.length), Math.min(writePos, fullPrefix.length)))
+      setDisplayedSuffix(buildDisplay(fullSuffix, suffixGlitches,
+        Math.max(0, cp - fullPrefix.length), Math.max(0, writePos - fullPrefix.length)))
+      if (correctPos >= totalLen) clearInterval(id)
     }, WRITE_MS)
 
-    return () => { clearInterval(phase1Id); clearInterval(phase2Id) }
+    return () => clearInterval(id)
   }, [expanded, prefix, suffix])
 
   function handleClick(e: React.MouseEvent<HTMLButtonElement>) {
