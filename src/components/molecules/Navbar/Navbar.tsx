@@ -51,28 +51,39 @@ export function Navbar({ className, ...rest }: NavbarProps) {
           />
         </div>
 
-        {/* ── Bottom bar ── */}
-        <div className={styles.bar}>
+        {/* ── Expanded prompts — grid reveal, buttons animate via expanded prop ── */}
+        <div className={`${styles.expandedSection} ${open ? styles.expandedOpen : ''}`}>
+          <div className={styles.expandedInner}>
+            {PROMPTS.map(p => (
+              <ButtonPrompt
+                key={p.label}
+                prefix={p.prefix}
+                label={p.label}
+                suffix={p.suffix || undefined}
+                expanded={open}
+                onClick={stopProp}
+              />
+            ))}
+          </div>
+        </div>
 
-          {/* ── Single set of prompt buttons — horizontal chips when closed, vertical when open ── */}
-          <div className={[styles.chipsWrap, open ? styles.chipsOpen : ''].filter(Boolean).join(' ')}>
-            <div className={[styles.chipsScroll, open ? styles.chipsScrollOpen : ''].filter(Boolean).join(' ')}>
+        {/* ── Bottom bar: collapsed chips (fade out when open) + menu button ── */}
+        <div className={styles.bar}>
+          <div className={`${styles.chipsWrap} ${open ? styles.chipsHidden : ''}`}>
+            <div className={styles.chipsScroll}>
               {PROMPTS.map(p => (
                 <ButtonPrompt
                   key={p.label}
-                  prefix={p.prefix}
                   label={p.label}
-                  suffix={p.suffix || undefined}
-                  expanded={open}
+                  expanded={false}
                   onClick={stopProp}
-                  className={open ? styles.promptItem : ''}
                 />
               ))}
             </div>
-            {!open && <div className={styles.chipsFade} aria-hidden />}
+            <div className={styles.chipsFade} aria-hidden />
           </div>
 
-          {/* ButtonMenu click bubbles up to toggle navbar */}
+          {/* ButtonMenu sits below the expanded prompts, always at bottom-right */}
           <ButtonMenu open={open} />
         </div>
 

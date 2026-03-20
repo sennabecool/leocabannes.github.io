@@ -38,13 +38,6 @@ export default function ColorSection() {
           '--color-neon-dark',
         ].map(name => ({ name, value: resolveVar(name) })),
       },
-      {
-        label: 'Navbar',
-        tokens: [
-          '--color-navbar-card',
-          '--color-navbar-input',
-        ].map(name => ({ name, value: resolveVar(name) })),
-      },
     ])
   }, [])
 

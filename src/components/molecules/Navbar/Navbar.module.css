@@ -66,6 +66,30 @@
   opacity: 0.35;
 }
 
+/* ── Expanded section — grid reveal animation ── */
+.expandedSection {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--duration-slower) var(--easing-spring);
+}
+
+.expandedOpen {
+  grid-template-rows: 1fr;
+}
+
+.expandedInner {
+  overflow: hidden;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;  /* buttons size to their content */
+  gap: 8px;
+  /* Top padding creates the 16px gap from input when revealed.
+     It's clipped (invisible) when the section is 0fr. */
+  padding-top: 16px;
+  padding-bottom: 4px;
+}
+
 /* ── Bottom bar ── */
 .bar {
   display: flex;
@@ -76,19 +100,24 @@
   margin-top: 16px;
 }
 
-/* ── Chips wrapper ── */
+/* ── Collapsed chips ── */
 .chipsWrap {
   flex: 1;
   min-width: 0;
   position: relative;
   overflow: hidden;
+  max-height: 32px;
+  opacity: 1;
+  transition:
+    max-height var(--duration-slower) var(--easing-spring),
+    opacity    var(--duration-fast)   var(--easing-out);
 }
 
-.chipsOpen {
-  overflow: visible;
+.chipsHidden {
+  max-height: 0;
+  opacity: 0;
 }
 
-/* ── Chips scroll (horizontal when collapsed) ── */
 .chipsScroll {
   display: flex;
   flex-direction: row;
@@ -102,21 +131,7 @@
   display: none;
 }
 
-/* ── Vertical layout when expanded ── */
-.chipsScrollOpen {
-  flex-direction: column;
-  overflow-x: hidden;
-  overflow-y: visible;
-  gap: 6px;
-}
-
-/* Full-width prompt item in expanded state */
-.promptItem {
-  width: 100%;
-  justify-content: flex-start;
-}
-
-/* Right-edge overflow fade (collapsed only) */
+/* Right-edge overflow fade */
 .chipsFade {
   position: absolute;
   top: 0;
