@@ -4,6 +4,18 @@ import styles from './ButtonPrompt.module.css'
 
 const CHAR_INTERVAL_MS = 40
 
+const LEET: Record<string, string> = {
+  a: '4', e: '3', i: '1', o: '0', s: '5',
+  t: '7', l: '1', b: '8', g: '9', z: '2',
+}
+const GLITCH_POOL = '#%&*?@!'
+
+function nextGlitchChar(char: string): string {
+  const leet = LEET[char.toLowerCase()]
+  if (leet && Math.random() > 0.3) return leet
+  return GLITCH_POOL[Math.floor(Math.random() * GLITCH_POOL.length)]
+}
+
 export interface ButtonPromptProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   label?: string
   prefix?: string
@@ -62,19 +74,34 @@ export function ButtonPrompt({
       return
     }
 
-    // Expanding — type prefix fully, then suffix
+    // Expanding — type prefix fully then suffix, each char glitches before revealing
     let prefixDone = fullPrefix.length === 0
     let i = 0
+    let glitching = true
     const id = setInterval(() => {
-      i++
       if (!prefixDone) {
-        setDisplayedPrefix(fullPrefix.slice(0, i))
-        if (i >= fullPrefix.length) { prefixDone = true; i = 0 }
+        if (glitching) {
+          setDisplayedPrefix(fullPrefix.slice(0, i) + nextGlitchChar(fullPrefix[i]))
+          glitching = false
+        } else {
+          i++
+          setDisplayedPrefix(fullPrefix.slice(0, i))
+          glitching = true
+          if (i >= fullPrefix.length) { prefixDone = true; i = 0 }
+        }
       } else {
-        setDisplayedSuffix(fullSuffix.slice(0, i))
-        if (i >= fullSuffix.length) clearInterval(id)
+        if (fullSuffix.length === 0) { clearInterval(id); return }
+        if (glitching) {
+          setDisplayedSuffix(fullSuffix.slice(0, i) + nextGlitchChar(fullSuffix[i]))
+          glitching = false
+        } else {
+          i++
+          setDisplayedSuffix(fullSuffix.slice(0, i))
+          glitching = true
+          if (i >= fullSuffix.length) clearInterval(id)
+        }
       }
-    }, CHAR_INTERVAL_MS)
+    }, CHAR_INTERVAL_MS / 2)
 
     return () => clearInterval(id)
   }, [expanded, prefix, suffix])
