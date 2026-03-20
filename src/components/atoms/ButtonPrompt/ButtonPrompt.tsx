@@ -2,9 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import type { ButtonHTMLAttributes } from 'react'
 import styles from './ButtonPrompt.module.css'
 
-const CHAR_INTERVAL_MS  = 80  // collapse erase speed
-const WRITE_MS          = 20  // expand tick speed
-const CORRECT_DELAY     = 3   // correction trails write head by N chars
+const ERASE_MS          = 80  // collapse erase speed (per char)
+const WRITE_MS          = 20  // write head tick speed (per char)
+const CORRECT_MS        = 80  // correct head tick speed (per char)
 
 const LEET: Record<string, string> = {
   a: '4', e: '3', i: '1', o: '0', s: '5',
@@ -60,7 +60,7 @@ export function ButtonPrompt({
           setDisplayedPrefix(fullPrefix.slice(0, i))
           setDisplayedSuffix(fullSuffix.slice(0, i))
           if (i <= 0) clearInterval(id)
-        }, CHAR_INTERVAL_MS)
+        }, ERASE_MS)
         return () => clearInterval(id)
       }
       // Already collapsed — clear instantly
@@ -89,20 +89,28 @@ export function ButtonPrompt({
     }
 
     let writePos = 0
-    let correctPos = -CORRECT_DELAY
+    let correctPos = 0
 
-    const id = setInterval(() => {
-      if (writePos < totalLen) writePos++
-      correctPos++
-      const cp = Math.max(0, correctPos)
+    function render() {
+      const cp = Math.min(correctPos, totalLen)
+      const wp = Math.min(writePos, totalLen)
       setDisplayedPrefix(buildDisplay(fullPrefix, prefixGlitches,
-        Math.min(cp, fullPrefix.length), Math.min(writePos, fullPrefix.length)))
+        Math.min(cp, fullPrefix.length), Math.min(wp, fullPrefix.length)))
       setDisplayedSuffix(buildDisplay(fullSuffix, suffixGlitches,
-        Math.max(0, cp - fullPrefix.length), Math.max(0, writePos - fullPrefix.length)))
-      if (correctPos >= totalLen) clearInterval(id)
+        Math.max(0, cp - fullPrefix.length), Math.max(0, wp - fullPrefix.length)))
+    }
+
+    const writeId = setInterval(() => {
+      if (writePos < totalLen) { writePos++; render() }
+      else clearInterval(writeId)
     }, WRITE_MS)
 
-    return () => clearInterval(id)
+    const correctId = setInterval(() => {
+      if (correctPos < totalLen) { correctPos++; render() }
+      else clearInterval(correctId)
+    }, CORRECT_MS)
+
+    return () => { clearInterval(writeId); clearInterval(correctId) }
   }, [expanded, prefix, suffix])
 
   function handleClick(e: React.MouseEvent<HTMLButtonElement>) {
