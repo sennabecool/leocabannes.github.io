@@ -3,8 +3,24 @@ import type { ButtonHTMLAttributes } from 'react'
 import { Icon } from '../Icon'
 import styles from './ButtonMenu.module.css'
 
-const LABEL = 'close'
-const CHAR_INTERVAL_MS = 40
+const LABEL      = 'close'
+const ERASE_MS   = 20
+const WRITE_MS   = 20
+const CORRECT_MS = 40
+
+const LEET: Record<string, string> = {
+  a: '@', b: '8', c: '₵', d: '₫', e: '3', f: 'f', g: '9', h: '#',
+  i: '!', j: 'j', k: '₭', l: '1', m: 'm', n: '₦', o: '0', p: '₱',
+  q: 'q', r: 'r', s: '5', t: '7', u: 'u', v: 'v', w: '₩', x: 'x',
+  y: '¥', z: '2',
+}
+const GLITCH_POOL = '#%&*?@!'
+
+function nextGlitchChar(char: string): string {
+  const leet = LEET[char.toLowerCase()]
+  if (leet && Math.random() > 0.3) return leet
+  return GLITCH_POOL[Math.floor(Math.random() * GLITCH_POOL.length)]
+}
 
 export interface ButtonMenuProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   defaultOpen?: boolean
@@ -31,7 +47,7 @@ export function ButtonMenu({
           i--
           setDisplayedLabel(LABEL.slice(0, i))
           if (i <= 0) clearInterval(id)
-        }, CHAR_INTERVAL_MS)
+        }, ERASE_MS)
         return () => clearInterval(id)
       }
       setDisplayedLabel('')
@@ -43,13 +59,27 @@ export function ButtonMenu({
       return
     }
 
-    let i = 0
-    const id = setInterval(() => {
-      i++
-      setDisplayedLabel(LABEL.slice(0, i))
-      if (i >= LABEL.length) clearInterval(id)
-    }, CHAR_INTERVAL_MS)
-    return () => clearInterval(id)
+    const glitches = Array.from(LABEL, nextGlitchChar)
+    let writePos = 0
+    let correctPos = 0
+
+    function render() {
+      const wp = Math.min(writePos, LABEL.length)
+      const cp = Math.min(correctPos, LABEL.length)
+      setDisplayedLabel(LABEL.slice(0, cp) + glitches.slice(cp, wp).join(''))
+    }
+
+    const writeId = setInterval(() => {
+      if (writePos < LABEL.length) { writePos++; render() }
+      else clearInterval(writeId)
+    }, WRITE_MS)
+
+    const correctId = setInterval(() => {
+      if (correctPos < LABEL.length) { correctPos++; render() }
+      else clearInterval(correctId)
+    }, CORRECT_MS)
+
+    return () => { clearInterval(writeId); clearInterval(correctId) }
   }, [open])
 
   function handleClick(e: React.MouseEvent<HTMLButtonElement>) {
