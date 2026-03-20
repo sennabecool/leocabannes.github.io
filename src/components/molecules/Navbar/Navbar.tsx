@@ -28,8 +28,6 @@ export function Navbar({ className, ...rest }: NavbarProps) {
   }
 
   function handleInputClick(e: React.MouseEvent) {
-    // When already open: don't close on input click (let user type)
-    // When closed: let it bubble so the navbar opens
     if (open) e.stopPropagation()
   }
 
@@ -53,37 +51,25 @@ export function Navbar({ className, ...rest }: NavbarProps) {
           />
         </div>
 
-        {/* ── Expanded prompts — slides in with grid trick ── */}
-        <div className={`${styles.expandedSection} ${open ? styles.expandedOpen : ''}`}>
-          <div className={styles.expandedInner}>
-            {PROMPTS.map(p => (
-              <ButtonPrompt
-                key={p.label}
-                prefix={p.prefix}
-                label={p.label}
-                suffix={p.suffix || undefined}
-                expanded={true}
-                onClick={stopProp}
-                className={styles.expandedPrompt}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* ── Bottom bar: horizontal chips + menu button ── */}
+        {/* ── Bottom bar ── */}
         <div className={styles.bar}>
-          <div className={`${styles.chipsWrap} ${open ? styles.chipsHidden : ''}`}>
-            <div className={styles.chipsScroll}>
+
+          {/* ── Single set of prompt buttons — horizontal chips when closed, vertical when open ── */}
+          <div className={[styles.chipsWrap, open ? styles.chipsOpen : ''].filter(Boolean).join(' ')}>
+            <div className={[styles.chipsScroll, open ? styles.chipsScrollOpen : ''].filter(Boolean).join(' ')}>
               {PROMPTS.map(p => (
                 <ButtonPrompt
                   key={p.label}
+                  prefix={p.prefix}
                   label={p.label}
-                  expanded={false}
+                  suffix={p.suffix || undefined}
+                  expanded={open}
                   onClick={stopProp}
+                  className={open ? styles.promptItem : ''}
                 />
               ))}
             </div>
-            <div className={styles.chipsFade} aria-hidden />
+            {!open && <div className={styles.chipsFade} aria-hidden />}
           </div>
 
           {/* ButtonMenu click bubbles up to toggle navbar */}

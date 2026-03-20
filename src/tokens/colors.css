@@ -1,6 +1,6 @@
 :root {
-  /* ── Primitives — Neutrals ── */
-  --color-neutral-0:    #ffffff;
+  /* ── Greyscale ── */
+  --color-white:        #ffffff;
   --color-neutral-50:   #f9fafb;
   --color-neutral-100:  #f3f4f6;
   --color-neutral-200:  #e5e7eb;
@@ -12,26 +12,25 @@
   --color-neutral-800:  #1f2937;
   --color-neutral-900:  #111827;
   --color-neutral-950:  #030712;
+  --color-grey:         #e9ebeb;
+  --color-dark-grey:    #474747;
+  --color-black:        #1e1e1e;
 
-  /* ── Primitives — Neon ── */
+  /* ── Neon ── */
   --color-neon-light:  #ebffc2;  /* Light Neon Green  */
   --color-neon-subtle: #daff99;  /* Subtle Neon Green */
   --color-neon:        #80c800;  /* Neon Green        */
   --color-neon-dark:   #4c7600;  /* Dark Neon Green   */
 
-  /* ── Primitives — Ink & Surface ── */
-  --color-black: #1e1e1e;  /* Black */
-  --color-grey:  #e9ebeb;  /* Grey  */
-
   /* ── Semantic ── (components reference only these) */
-  --color-bg-base:        var(--color-neutral-0);
+  --color-bg-base:        var(--color-white);
   --color-bg-subtle:      var(--color-neutral-50);
   --color-bg-muted:       var(--color-neutral-100);
 
   --color-text-primary:   var(--color-neutral-900);
   --color-text-secondary: var(--color-neutral-500);
   --color-text-disabled:  var(--color-neutral-400);
-  --color-text-inverse:   var(--color-neutral-0);
+  --color-text-inverse:   var(--color-white);
 
   --color-border:         var(--color-neutral-200);
   --color-border-strong:  var(--color-neutral-300);
@@ -53,8 +52,7 @@
   --color-prompt-border:    var(--color-grey);
 
   /* ── Component — Navbar ── */
-  --color-navbar-glass:        rgba(255, 255, 255, 0.10);
-  --color-navbar-card:         var(--color-neutral-0);
-  --color-navbar-card-border:  var(--color-grey);
-  --color-navbar-input:        #474747;
+  --color-navbar-glass:  rgba(255, 255, 255, 0.10);
+  --color-navbar-card:   var(--color-white);
+  --color-navbar-input:  var(--color-dark-grey);
 }

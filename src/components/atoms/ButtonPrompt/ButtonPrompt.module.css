@@ -19,8 +19,8 @@
   transition:
     background-color var(--duration-fast) var(--easing-default),
     border-color var(--duration-fast) var(--easing-default),
-    padding var(--duration-slow) var(--easing-spring),
-    font-size var(--duration-slow) var(--easing-spring);
+    padding var(--duration-slower) var(--easing-spring),
+    font-size var(--duration-slower) var(--easing-spring);
 }
 
 .button:hover {

@@ -21,6 +21,15 @@ export default function ColorSection() {
   useEffect(() => {
     setGroups([
       {
+        label: 'Greyscale',
+        tokens: [
+          '--color-white',
+          '--color-grey',
+          '--color-dark-grey',
+          '--color-black',
+        ].map(name => ({ name, value: resolveVar(name) })),
+      },
+      {
         label: 'Neon',
         tokens: [
           '--color-neon-light',
@@ -30,17 +39,9 @@ export default function ColorSection() {
         ].map(name => ({ name, value: resolveVar(name) })),
       },
       {
-        label: 'Ink & Surface',
-        tokens: ['--color-black', '--color-grey'].map(name => ({
-          name,
-          value: resolveVar(name),
-        })),
-      },
-      {
         label: 'Navbar',
         tokens: [
           '--color-navbar-card',
-          '--color-navbar-card-border',
           '--color-navbar-input',
         ].map(name => ({ name, value: resolveVar(name) })),
       },
