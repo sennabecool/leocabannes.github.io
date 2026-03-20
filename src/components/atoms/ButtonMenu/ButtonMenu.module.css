@@ -1,0 +1,56 @@
+/* ── Component tokens ── */
+:root {
+  --color-menu-bg:  var(--color-black);
+  --color-menu-ink: var(--color-text-inverse);
+}
+
+/* ── Base (closed) ── */
+.button {
+  display: inline-flex;
+  align-items: center;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  background-color: var(--color-menu-bg);
+  border: none;
+  cursor: pointer;
+  height: 32px;
+  padding: 4px;
+  gap: 2px;
+
+  transition: padding var(--duration-slow) var(--easing-spring);
+}
+
+/* ── Opened ── */
+.opened {
+  padding: 4px 4px 4px 16px;
+}
+
+/* ── Label ── */
+.label {
+  color: var(--color-menu-ink);
+  font-family: var(--btn-sm-family);
+  font-size: var(--btn-sm-size);
+  font-weight: var(--btn-sm-weight);
+  line-height: var(--btn-sm-leading);
+  white-space: nowrap;
+  letter-spacing: var(--tracking-normal);
+}
+
+/* ── Icon ── */
+.iconWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.icon {
+  color: var(--color-menu-ink);
+  transition: transform var(--duration-slow) var(--easing-spring);
+}
+
+.iconOpen {
+  transform: rotate(135deg);
+}

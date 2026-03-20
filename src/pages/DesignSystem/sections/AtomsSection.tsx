@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ButtonPrompt } from '@components/atoms/ButtonPrompt'
+import { ButtonMenu } from '@components/atoms/ButtonMenu'
 import styles from './sections.module.css'
 import atomStyles from './AtomsSection.module.css'
 
@@ -61,6 +62,14 @@ export default function AtomsSection() {
               suffix={testSuffix || undefined}
             />
           </div>
+        </div>
+      </div>
+
+      <div className={styles.preview}>
+        <h3 className={styles.previewTitle}>ButtonMenu</h3>
+        <div className={styles.previewStage}>
+          <ButtonMenu />
+          <ButtonMenu defaultOpen />
         </div>
       </div>
     </section>
