@@ -74,34 +74,30 @@ export function ButtonPrompt({
       return
     }
 
-    // Expanding — type prefix fully then suffix, each char glitches before revealing
+    // Expanding — each char glitches while the previous one is confirmed,
+    // so the correction trails one step behind the writing head.
     let prefixDone = fullPrefix.length === 0
     let i = 0
-    let glitching = true
     const id = setInterval(() => {
       if (!prefixDone) {
-        if (glitching) {
+        if (i < fullPrefix.length) {
           setDisplayedPrefix(fullPrefix.slice(0, i) + nextGlitchChar(fullPrefix[i]))
-          glitching = false
-        } else {
           i++
-          setDisplayedPrefix(fullPrefix.slice(0, i))
-          glitching = true
-          if (i >= fullPrefix.length) { prefixDone = true; i = 0 }
+        } else {
+          setDisplayedPrefix(fullPrefix)
+          prefixDone = true
+          i = 0
         }
       } else {
-        if (fullSuffix.length === 0) { clearInterval(id); return }
-        if (glitching) {
+        if (i < fullSuffix.length) {
           setDisplayedSuffix(fullSuffix.slice(0, i) + nextGlitchChar(fullSuffix[i]))
-          glitching = false
-        } else {
           i++
-          setDisplayedSuffix(fullSuffix.slice(0, i))
-          glitching = true
-          if (i >= fullSuffix.length) clearInterval(id)
+        } else {
+          setDisplayedSuffix(fullSuffix)
+          clearInterval(id)
         }
       }
-    }, CHAR_INTERVAL_MS / 2)
+    }, CHAR_INTERVAL_MS)
 
     return () => clearInterval(id)
   }, [expanded, prefix, suffix])
