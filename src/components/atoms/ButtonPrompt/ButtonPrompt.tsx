@@ -34,42 +34,49 @@ export function ButtonPrompt({
 
     const fullPrefix = prefix ?? ''
     const fullSuffix = suffix ?? ''
-    const maxLen = Math.max(fullPrefix.length, fullSuffix.length)
 
     if (!expanded) {
       if (wasExpanded) {
-        // Collapsing — animate out
-        if (maxLen === 0) return
-        let i = maxLen
+        // Collapsing — erase suffix first, then prefix
+        let suffixDone = fullSuffix.length === 0
+        let i = suffixDone ? fullPrefix.length : fullSuffix.length
         const id = setInterval(() => {
           i--
-          setDisplayedPrefix(fullPrefix.slice(0, i))
-          setDisplayedSuffix(fullSuffix.slice(0, i))
-          if (i <= 0) clearInterval(id)
+          if (!suffixDone) {
+            setDisplayedSuffix(fullSuffix.slice(0, i))
+            if (i <= 0) { suffixDone = true; i = fullPrefix.length }
+          } else {
+            setDisplayedPrefix(fullPrefix.slice(0, i))
+            if (i <= 0) clearInterval(id)
+          }
         }, CHAR_INTERVAL_MS)
         return () => clearInterval(id)
       }
-      // Already collapsed (initial mount or prop change) — clear instantly
+      // Already collapsed — clear instantly
       setDisplayedPrefix('')
       setDisplayedSuffix('')
       return
     }
 
     if (wasExpanded) {
-      // Already expanded (initial mount with defaultExpanded, or prop change) — show full instantly
+      // Already expanded — show full instantly
       setDisplayedPrefix(fullPrefix)
       setDisplayedSuffix(fullSuffix)
       return
     }
 
-    // Expanding — animate in
-    if (maxLen === 0) return
+    // Expanding — type prefix fully, then suffix
+    let prefixDone = fullPrefix.length === 0
     let i = 0
     const id = setInterval(() => {
       i++
-      setDisplayedPrefix(fullPrefix.slice(0, i))
-      setDisplayedSuffix(fullSuffix.slice(0, i))
-      if (i >= maxLen) clearInterval(id)
+      if (!prefixDone) {
+        setDisplayedPrefix(fullPrefix.slice(0, i))
+        if (i >= fullPrefix.length) { prefixDone = true; i = 0 }
+      } else {
+        setDisplayedSuffix(fullSuffix.slice(0, i))
+        if (i >= fullSuffix.length) clearInterval(id)
+      }
     }, CHAR_INTERVAL_MS)
 
     return () => clearInterval(id)
