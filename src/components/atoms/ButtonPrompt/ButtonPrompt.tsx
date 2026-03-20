@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import type { ButtonHTMLAttributes } from 'react'
 import styles from './ButtonPrompt.module.css'
 
-const CHAR_INTERVAL_MS = 40
+const CHAR_INTERVAL_MS = 200
 
 const LEET: Record<string, string> = {
   a: '4', e: '3', i: '1', o: '0', s: '5',
