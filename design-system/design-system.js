@@ -72,7 +72,7 @@
     'Chips': ['label + green shell', 'small / current', 'default / hover / pressed / active', 'Horizontal navigation and paired FLIP target.', '--bg-accent-subtle, --radius-chip, --fz-button-sm'],
     'Menu Button': ['label + 24px icon', 'closed / open', 'default / opening / closing', 'Controls chatbox expansion and icon rotation.', '--bg-inverse, --fg-on-dark, --size-icon'],
     'Message Action': ['icon control', 'share / like / dislike', 'hidden / corrected / hover / pressed', 'Runs native share or local rating feedback.', '--size-icon, --radius-action, --fg-muted'],
-    'Progress Tag': ['progress value + completion label', 'loading / DONE!', 'idle / generating / complete / dismissed', 'Tracks project-image depixelation milestones.', '--fz-button-sm, --lh-button-sm, --radius-action'],
+    'Progress Tag': ['progress value + completion label', 'loading / DONE!', 'idle / generating / complete / dismissed', 'Automatically tracks project-card and case-study image depixelation.', '--fz-button-sm, --lh-button-sm, --radius-action'],
     'Site Identity': ['name + version control', 'desktop / mobile', 'intro / visible', 'Persists across portfolio routes.', '--font-family, --fw-medium, --fz-paragraph'],
     'Token Counter': ['label + value + marker', 'count-up / persistent countdown', 'intro / active / restored', 'Stores the balance and spends on generated effects.', '--fz-button-sm, --lh-button-sm, --border-default'],
     'Chat Bubble': ['prefix + keyword + suffix', 'compact / large / selected', 'idle / writing / corrected / hover', 'Wraps whole words and shares Leet/routing behavior.', '--bg-accent-subtle, --radius-chip, --fg-accent'],

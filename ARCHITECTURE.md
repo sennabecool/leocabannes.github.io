@@ -67,11 +67,25 @@ chatbox therefore never interrupts the intro of the page it just opened.
 
 ## Page Intro
 
-Text animation order follows DOM order. The timing planner calculates writing
-and correction durations from character count and rendered font size, then
-fits the sequence between the minimum and maximum duration tokens.
+Page apparition owns only the active `.screen` and its page content. The
+persistent site header, token counter, and fixed chatbox stay outside this
+sequence and keep their independent shell and menu motion.
 
-Optional page overrides:
+The planner measures eligible items in document space and sorts them by visual
+top, then visual left, with DOM order only as a stable tie-breaker. It admits one
+gate at a time: a text item completes its Leet write before the next item may
+write, while a non-text component completes its short entry handoff before the
+next gate opens. Text correction starts after that text's write and may overlap
+later gates; project-image pixel generation may likewise continue after its
+component gate has opened the next item. This preserves the top-to-bottom,
+left-to-right hierarchy without making long corrections or image generation
+stall the page.
+
+Every text item receives its own write and correction timing from its character
+count and rendered font size. Shorter and smaller text therefore resolves
+faster; there is no shared completion window.
+
+Optional page or component overrides:
 
 ```html
 <section
@@ -85,42 +99,45 @@ shell and token-counter intro.
 
 ## Viewport Reveal
 
-Add `data-reveal-on-scroll` to any component or content group that should
-generate only when it enters the viewport:
+Add `data-reveal-on-scroll` to a content owner whose pending/revealing/revealed
+state should follow viewport entry. Add `data-reveal-in-sequence` when that
+owner must also occupy one non-text component gate in the page cascade:
 
 ```html
-<article data-reveal-on-scroll>
+<article data-reveal-on-scroll data-reveal-in-sequence>
   <h2 data-leet-text>Project title</h2>
   <img data-pixel-reveal ... />
 </article>
 ```
 
-The initial page planner excludes text inside these groups only when all of its
-reserved characters are below the generation fold. A deferred text already
-visible above the fold joins the initial cohort automatically, without losing
-its component ownership. Every active page owns one shared generation queue.
-Its `IntersectionObserver` batches groups that enter together into one
-DOM-order sequence; groups reached during an active batch wait their turn.
-Writing and correction expose completion promises, so component dependencies
-follow actual character events rather than parallel `setTimeout` estimates.
-The top edge of `.chatbox-wrap` is the shared lower boundary for initial text
-classification, the last visible Leet character, and the viewport observer.
-The page-intro configuration uses the closed chatbox floor as a geometry
-fallback when the chatbox cannot be measured. The queue is released only when the initial writing
-promise resolves. Initial correction may therefore continue while the first
-deferred group writes, keeping the page ordered without introducing a
-correction-length pause.
-The same hierarchy therefore drives writing and correction across components,
-not only inside one component. Font size and character count still calculate
-each effect's speed automatically; calculated durations control pace, never
-cross-component synchronization. Text generation consumes the same persistent
-tokens as the page intro. Optional `data-leet-duration` and
-`data-leet-write-duration` overrides remain available for exceptional
-component pacing, not ordinary page sequencing.
+Eligibility uses rendered text-line boxes inside the unobscured content
+viewport, bounded by the live fixed header and closed chatbox geometry. A Leet
+glyph is written only for a rendered line that intersects this region; later
+lines remain pending until scrolling makes them eligible. Project cards and
+case-study media carousels are indivisible component units, measured by their
+owner box rather than by a title or descendant image. Generic components opt in
+to the same behavior with `data-reveal-in-sequence`.
 
-Project image generation also consumes tokens as new percentage peaks are
-reached. A randomized regression never charges twice, and failed or
-reduced-motion image paths do not charge generation tokens.
+Every active page owns one ordered queue. Initial load and
+`IntersectionObserver` notifications only enqueue candidates; immediately
+before each dequeue, the planner remeasures, re-sorts, and revalidates them
+against the current viewport and layout. Items still below the content viewport
+remain pending. When a fast downward scroll has already moved an earlier item
+above the viewport, the controller finalizes it without Leet or entry motion
+(plain text and the native/final component state) so stale work cannot block the
+visible destination. Route changes and replay invalidation cancel outstanding
+component lifecycles before rebuilding the active page queue.
+
+Text and project-image generation consume the same persistent tokens as the
+page intro only for animation steps that actually run. Skipped, failed,
+canceled, and reduced-motion paths do not spend generation tokens. Optional
+`data-leet-duration` and `data-leet-write-duration` overrides remain available
+for exceptional component pacing, not ordinary page sequencing.
+
+With `prefers-reduced-motion: reduce`, text is shown immediately in its plain
+form, project cards and carousels enter their final state, and images use their
+native source without a pixel canvas. The queue still resolves in a
+deterministic final state but does not run apparition motion.
 
 ## Components
 
@@ -269,12 +286,15 @@ columns and 24px gaps. At that maximum, `sm` is 416 × 350px, `md` spans two
 columns at 856 × 350px, and `lg` spans two columns and two rows at 856 × 724px;
 the row height scales with the available grid width below the maximum.
 
-Add `data-pixel-reveal` to a project image and load
-`project-image-reveal.js` with `defer` on that page. The controller overlays
-a temporary Canvas 2D layer, starts when the image enters the viewport, and
-removes the canvas after the native image is revealed. Every participating
-project card can expose the shared progress chip with `data-pixel-progress`
-and a child marked `data-pixel-progress-value`.
+Add `data-pixel-reveal` to a project-card or case-study image and load
+`project-image-reveal.js` with `defer` on that page. The page cascade starts
+sequenced images when their component gate opens; standalone images retain the
+controller's viewport start. The controller overlays a temporary Canvas 2D
+layer and removes it after the native image is revealed. Every participating
+image receives the shared progress chip automatically. Existing project-card
+markup can supply its own chip with `data-pixel-progress` and a child marked
+`data-pixel-progress-value`; otherwise the controller creates the percentage
+and `DONE!` states inside the image owner.
 
 Timing, cascade, pixel size, viewport threshold, and device-pixel-ratio limits
 live in the project-image controller configuration. The chip counts continuously from 0 to 100,
@@ -285,15 +305,99 @@ At completion, the plain `DONE!` label replaces the counter and dismisses the ch
 Each newly reached percentage point consumes the controller's configured token
 cost.
 Reduced-motion users receive the native image and a completed progress value
-immediately. Dynamic pages can call `portfolioProjectImages.init(root)`,
-while `portfolioProjectImages.replay(root)` is available for deliberate
-replays. Pass `{ startImmediately: true }` as its second argument to replay
-every card in a specimen regardless of viewport intersection.
+immediately. Dynamic pages can call `portfolioProjectImages.init(root)`, while
+`portfolioProjectImages.replay(root)` is available for deliberate replays.
+Pass `{ startImmediately: true }` as its second argument to replay every card in
+a specimen regardless of viewport intersection.
+
+`portfolioProjectImages.start(root, options)` returns a frozen, scoped lifecycle
+handle with stable `started` and `completed` promises plus an idempotent
+`cancel()`. Both promises resolve to DOM-ordered `{ image, status, reason }`
+results. Canceling clears that handle's pending delays, animation frames,
+observers, and canvas layers, reveals the native images, and returns
+`completed`; cancellation is terminal until `replay(root)`. Scoped starts are
+non-staggered by default, with `{ stagger: true }` as an explicit opt-in.
+Callers that ignore the return value remain compatible. The page cascade uses
+`started` for its component handoff and does not wait for `completed`, allowing
+pixel generation to overlap later text correction and entry gates.
+
+### Case Studies
+
+Project detail documents use the conversation shell with a reusable case-study
+content contract:
+
+```html
+<section
+  class="screen page page--conversation page--case-study"
+  data-screen-name="project-slug"
+  data-nav-section="work"
+  data-page-layout="conversation"
+>
+  <header class="top-bar top-bar--conversation">...</header>
+  <div class="subpage-content">
+    <a class="logo logo-sm">...</a>
+    <div class="message" data-message>
+      <article class="message__body case-study" data-message-body>
+        <header class="case-study__heading">...</header>
+        <div
+          class="case-study__media-carousel"
+          data-media-carousel
+          data-reveal-on-scroll
+          data-reveal-in-sequence
+        >
+          <div class="case-study__media-carousel-track" data-media-carousel-track>
+            <figure class="case-study__media" data-media-slide>...</figure>
+            <figure class="case-study__media" data-media-slide>...</figure>
+          </div>
+          <div class="case-study__media-pagination">...</div>
+        </div>
+        <p class="case-study__summary">...</p>
+        <section class="case-study__section">...</section>
+      </article>
+      <div class="message-actions" data-message-actions>...</div>
+    </div>
+    <div class="suggestions">...</div>
+  </div>
+</section>
+```
+
+The template follows normal document flow: 24px separates adjacent content,
+48px separates the opening message from the case supertitle, the case title
+from its hero media, and the hero media from its summary; 48px also separates
+narrative sections. A media group is a two-slide,
+scroll-snap carousel with pagination on mobile. At the 768px breakpoint it breaks out of
+the centered 628px reading column into the full 16-column page grid: both
+slides display simultaneously, each spanning eight columns with a 24px gutter.
+Every media item keeps the project-card cell ratio of 171:148. Animated list
+items include their `&bull;` marker inside the `data-leet-text` content so the
+marker follows the same character sequence; the list retains `role="list"`.
+Use `.case-study__focus-list` and `.case-study__focus-item` for numbered workstreams.
+Optional project links belong inside `.case-study__meta` and must be omitted
+when no real destination exists. Case-study media groups use
+`data-reveal-on-scroll` and the functional `data-reveal-in-sequence` opt-in so
+each carousel becomes one component unit; its card-style apparition and pixel
+generation begin in visual document order after preceding text.
+
+Semantic `ul` elements inside `.case-study__body` receive the shared disc,
+indentation, and item spacing automatically. List items can use
+`data-leet-text`; the case-study list rule preserves their native `list-item`
+display so Leet generation does not suppress the marker.
+
+Every image inside `.case-study__media` uses `data-pixel-reveal`. The shared
+controller creates a canvas scoped to the media figure, begins generation when
+the sequenced carousel gate opens, spends the standard reveal token cost, and
+falls back to the native image when reduced motion is preferred.
+
+`data-nav-section="work"` keeps the Work chip selected on a project page while
+the chip's `data-href` still returns to the Work index. This attribute can be
+reused by any standalone detail page that belongs to a broader navigation
+section.
 
 ### Shell
 
-`.site-header` and the token counter live outside individual screens. Their
-state therefore persists while pages change.
+`.site-header`, the token counter, and `.chatbox-wrap` live outside individual
+screens. Their state therefore persists while pages change, and none of them is
+admitted to the page-content apparition queue.
 
 Visitor-facing pages use normal document scrolling and a `100vh` minimum page
 height at every breakpoint, matching the reference site's `min-h-screen`, so
@@ -314,11 +418,11 @@ visible behind browser chrome.
 
 ## Tokens
 
-`tokens.css` contains exactly 46 portfolio-wide design decisions:
+`tokens.css` contains exactly 50 portfolio-wide design decisions:
 
 - 12 semantic colors.
 - 10 spacing values on the 4px scale.
-- 12 typography values.
+- 16 typography values.
 - 7 border, radius, and icon values.
 - 5 shared effect and motion values.
 
@@ -355,7 +459,7 @@ chatbox.
 Every component creation or behavior change must update the Design System in
 the same change:
 
-1. Reuse the 46 shared foundations; add a token only for a genuinely recurring
+1. Reuse the 50 shared foundations; add a token only for a genuinely recurring
    portfolio-wide decision.
 2. Update the production component classes and behavior.
 3. Update its Design System specimen, anatomy, variants, states, behavior, and

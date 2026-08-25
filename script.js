@@ -41,11 +41,7 @@
   let cardLeetTexts = [];
   let tokenCounter = null;
   let shellIntro = null;
-  let viewportRevealObserver = null;
-  let viewportRevealQueue = [];
-  let viewportRevealIsPlaying = false;
-  let viewportRevealIsBlocked = false;
-  let viewportRevealScreenName = '';
+  let pageRevealScheduler = null;
   let pageSequenceVersion = 0;
   const prefersReducedMotion = window.matchMedia(
     '(prefers-reduced-motion: reduce)'
@@ -64,25 +60,8 @@
     maximumCorrectionDuration: readCssNumber('--page-intro-correction-duration-max', 600),
     fontReferenceSize: readCssNumber('--page-intro-font-reference', 16),
     minimumFontFactor: readCssNumber('--page-intro-font-factor-min', 0.85),
-    maximumFontFactor: readCssNumber('--page-intro-font-factor-max', 2.2),
-    foldBottomInset: readCssNumber(
-      '--page-intro-fold-bottom-inset',
-      readCssNumber('--chatbox-floor', 180)
-    )
+    maximumFontFactor: readCssNumber('--page-intro-font-factor-max', 2.2)
   });
-  const viewportRevealTiming = Object.freeze({
-    minimumTotalDuration: readCssNumber('--viewport-reveal-duration-min', 600),
-    maximumTotalDuration: readCssNumber('--viewport-reveal-duration-max', 1800),
-    threshold: readCssNumber('--viewport-reveal-threshold', 0.15)
-  });
-  const projectCardRevealDuration = readCssNumber(
-    '--project-card-reveal-duration',
-    480
-  );
-  const projectCardRevealStagger = readCssNumber(
-    '--project-card-reveal-stagger',
-    120
-  );
   const viewportTopFade = Object.freeze({
     startY: readCssNumber('--content-fade-out-start-y', 80),
     endY: readCssNumber('--content-fade-out-end-y', 0)
@@ -114,8 +93,9 @@
   const menuLeetTimingScale = readCssNumber('--menu-leet-timing-scale', 0.75);
   const firstPageTextStartDelay = readCssNumber('--page-first-load-delay', 400);
   const shellIntroDuration = readCssNumber('--shell-intro-duration', 900);
-  const assistantAvatarCascadeDelay = readCssNumber('--assistant-avatar-cascade-delay', 100);
-  const messageFollowupCascadeDelay = readCssNumber('--message-followup-cascade-delay', 100);
+  const pageRevealRowTolerance = 2;
+  const pageRevealComponentDuration = readCssNumber('--duration-fast', 150);
+  const projectCardRevealDuration = readCssNumber('--project-card-reveal-duration', 480);
 
   function setupViewportTopFade() {
     const selector = [
@@ -221,6 +201,8 @@
 
   function invalidatePageSequences() {
     pageSequenceVersion += 1;
+    pageRevealScheduler?.destroy();
+    pageRevealScheduler = null;
   }
 
   function getCurrentChipKey() {
@@ -396,10 +378,10 @@
     invalidatePageSequences();
     updateActiveChips(name);
     stampMessageTimes(activeScreen);
-    if (animate) playScreenLeetTexts(name);
     if (scroll) {
       window.scrollTo({ top: 0, behavior: 'auto' });
     }
+    if (animate) playScreenLeetTexts(name);
     return true;
   }
 
@@ -1050,7 +1032,8 @@
     const LINE_CORRECTION_DELAY = readCssNumber('--leet-line-correction-delay', 260);
     const LINE_CORRECTION_STEP = readCssNumber('--leet-line-correction-step', 16);
     const HIDE_STEP = readCssNumber('--leet-hide-step', 18);
-    const growsFromEmpty = Boolean(el.closest('[data-leet-grow="intrinsic"]'));
+    const growOwner = el.closest('[data-leet-grow="intrinsic"]');
+    const growsFromEmpty = Boolean(growOwner);
     const suggestionRow = el.closest('.suggestion');
     if (suggestionRow) {
       const siblingSuggestions = [...suggestionRow.parentElement.children]
@@ -1105,6 +1088,10 @@
       });
       node.replaceWith(fragment);
     });
+    const sequenceStates = spans.map(() => 'pending');
+    const sequenceOperations = new Set();
+    let activeSequenceWrites = 0;
+    let activeSequenceCorrections = 0;
 
     function createLeetCharSpan(char, index) {
       const span = document.createElement('span');
@@ -1184,15 +1171,341 @@
       span.textContent = mode === 'leet' ? span.dataset.leet : span.dataset.char;
     }
 
+    function syncSequenceElementState() {
+      if (activeSequenceWrites > 0) {
+        el.dataset.leetState = 'typing';
+        return;
+      }
+      if (activeSequenceCorrections > 0) {
+        el.dataset.leetState = 'correcting';
+        return;
+      }
+      el.dataset.leetState = sequenceStates.every(state => state === 'corrected')
+        ? 'ready'
+        : 'idle';
+    }
+
+    function setSequenceIndexPlain(index, { corrected = true, visible = true } = {}) {
+      const span = spans[index];
+      if (!span) return;
+      sequenceStates[index] = corrected ? 'corrected' : 'pending';
+      setChar(index, 'plain');
+      setTone(index);
+      if (visible) {
+        span.style.minWidth = '';
+        span.style.opacity = '1';
+      } else if (growsFromEmpty) {
+        span.textContent = '';
+        span.style.minWidth = '0';
+        span.style.opacity = '0';
+        delete span.dataset.typed;
+      } else {
+        span.style.minWidth = '';
+        span.style.opacity = '0';
+        delete span.dataset.typed;
+      }
+    }
+
+    function finalizeSequenceIndices(indices) {
+      indices.forEach(index => setSequenceIndexPlain(index));
+      syncSequenceElementState();
+    }
+
+    function requeueSequenceIndices(indices) {
+      indices.forEach(index => setSequenceIndexPlain(index, {
+        corrected: false,
+        visible: false
+      }));
+      syncSequenceElementState();
+    }
+
+    function cancelSequenceOperations({ finalize = false } = {}) {
+      [...sequenceOperations].forEach(operation => {
+        operation.cancel({ finalize });
+      });
+      sequenceOperations.clear();
+      activeSequenceWrites = 0;
+      activeSequenceCorrections = 0;
+    }
+
+    function prepareSequenceHidden({ reserveSpace = !growsFromEmpty } = {}) {
+      clearTimers();
+      clearAccentTimers();
+      cancelSequenceOperations();
+      isHiding = false;
+      hoveredIndices = new Set();
+      delete el.dataset.leetCollapsed;
+      if (!reserveSpace) el.dataset.leetCollapsed = 'true';
+      if (suggestionRow) suggestionRow.dataset.suggestionState = 'hidden';
+      spans.forEach((span, index) => {
+        sequenceStates[index] = 'pending';
+        delete span.dataset.typed;
+        setTone(index);
+        if (reserveSpace) {
+          setChar(index, 'plain');
+          span.style.minWidth = '';
+        } else {
+          span.textContent = '';
+          span.style.minWidth = '0';
+        }
+        span.style.opacity = '0';
+      });
+      syncSequenceElementState();
+    }
+
+    function getSequenceRect(indices) {
+      if (growsFromEmpty) return growOwner.getBoundingClientRect();
+      const rects = indices
+        .map(index => spans[index]?.getBoundingClientRect())
+        .filter(rect => rect && (rect.width || rect.height));
+      if (!rects.length) return el.getBoundingClientRect();
+      const top = Math.min(...rects.map(rect => rect.top));
+      const right = Math.max(...rects.map(rect => rect.right));
+      const bottom = Math.max(...rects.map(rect => rect.bottom));
+      const left = Math.min(...rects.map(rect => rect.left));
+      return {
+        top,
+        right,
+        bottom,
+        left,
+        width: Math.max(0, right - left),
+        height: Math.max(0, bottom - top)
+      };
+    }
+
+    function isRectInsideSequenceViewport(rect, viewport) {
+      return rect.width >= 0
+        && rect.height > 0
+        && rect.top >= viewport.top - 0.5
+        && rect.bottom <= viewport.bottom + 0.5
+        && rect.right > viewport.left
+        && rect.left < viewport.right;
+    }
+
+    function getPendingSequenceChunk(viewport, { allVisibleLines = false } = {}) {
+      const pendingIndices = sequenceStates
+        .map((state, index) => ({ state, index }))
+        .filter(item => item.state === 'pending')
+        .map(item => item.index);
+      if (!pendingIndices.length) return null;
+
+      if (growsFromEmpty) {
+        const rect = growOwner.getBoundingClientRect();
+        if (!isRectInsideSequenceViewport(rect, viewport)) return null;
+        return { indices: pendingIndices, rect };
+      }
+
+      const lineMap = new Map();
+      pendingIndices.forEach(index => {
+        const rect = spans[index].getBoundingClientRect();
+        const key = Math.round(rect.top);
+        if (!lineMap.has(key)) lineMap.set(key, []);
+        lineMap.get(key).push(index);
+      });
+      const visibleLines = [...lineMap.values()]
+        .map(indices => ({ indices, rect: getSequenceRect(indices) }))
+        .filter(line => isRectInsideSequenceViewport(line.rect, viewport))
+        .sort((first, second) => (
+          first.rect.top - second.rect.top || first.rect.left - second.rect.left
+        ));
+      if (!visibleLines.length) return null;
+      if (allVisibleLines) {
+        const indices = visibleLines.flatMap(line => line.indices);
+        return { indices, rect: getSequenceRect(indices) };
+      }
+      return visibleLines[0];
+    }
+
+    function finalizeSequenceBefore(viewportTop) {
+      if (growsFromEmpty) {
+        const rect = growOwner.getBoundingClientRect();
+        const pendingIndices = sequenceStates
+          .map((state, index) => ({ state, index }))
+          .filter(item => item.state === 'pending')
+          .map(item => item.index);
+        if (pendingIndices.length && rect.height > 0 && rect.bottom <= viewportTop) {
+          finalizeSequenceIndices(pendingIndices);
+          return pendingIndices.length;
+        }
+        return 0;
+      }
+      const indices = sequenceStates
+        .map((state, index) => ({ state, index }))
+        .filter(item => item.state === 'pending')
+        .filter(item => spans[item.index].getBoundingClientRect().bottom <= viewportTop)
+        .map(item => item.index);
+      if (indices.length) finalizeSequenceIndices(indices);
+      return indices.length;
+    }
+
+    function finalizeActiveSequenceOutside(viewport) {
+      if (growsFromEmpty) {
+        const rect = growOwner.getBoundingClientRect();
+        if (isRectInsideSequenceViewport(rect, viewport)) return 0;
+      }
+      const indices = sequenceStates
+        .map((state, index) => ({ state, index }))
+        .filter(item => item.state === 'writing' || item.state === 'typed')
+        .filter(item => !isRectInsideSequenceViewport(
+          spans[item.index].getBoundingClientRect(),
+          viewport
+        ))
+        .map(item => item.index);
+      if (indices.length) finalizeSequenceIndices(indices);
+      return indices.length;
+    }
+
+    function getPendingSequenceCount() {
+      return sequenceStates.filter(state => state === 'pending').length;
+    }
+
+    function playSequenceChunk(indices, {
+      writeDuration = getLeetWriteDuration(),
+      correctionDuration = getCorrectionDuration(),
+      onType,
+      onCorrect
+    } = {}) {
+      const activeIndices = [...new Set(indices)]
+        .filter(index => sequenceStates[index] === 'pending');
+      let writeSettled = false;
+      let correctionSettled = false;
+      let correctionStarted = false;
+      let resolveWrite;
+      let resolveCorrection;
+      const write = new Promise(resolve => { resolveWrite = resolve; });
+      const correction = new Promise(resolve => { resolveCorrection = resolve; });
+      const operationTimers = new Set();
+      const setOperationTimer = (fn, delay) => {
+        const id = window.setTimeout(() => {
+          operationTimers.delete(id);
+          fn();
+        }, Math.max(0, delay));
+        operationTimers.add(id);
+      };
+      const settleWrite = completed => {
+        if (writeSettled) return;
+        writeSettled = true;
+        activeSequenceWrites = Math.max(0, activeSequenceWrites - 1);
+        syncSequenceElementState();
+        resolveWrite({ completed });
+      };
+      const settleCorrection = completed => {
+        if (correctionSettled) return;
+        correctionSettled = true;
+        if (correctionStarted) {
+          activeSequenceCorrections = Math.max(0, activeSequenceCorrections - 1);
+        }
+        sequenceOperations.delete(operation);
+        syncSequenceElementState();
+        resolveCorrection({ completed });
+      };
+      const startCorrection = () => {
+        if (correctionStarted || correctionSettled) return;
+        correctionStarted = true;
+        activeSequenceCorrections += 1;
+        syncSequenceElementState();
+        const accentDuration = Math.min(ACCENT_DURATION, correctionDuration);
+        const correctionWindow = Math.max(0, correctionDuration - accentDuration);
+        const correctionStep = activeIndices.length > 1
+          ? correctionWindow / (activeIndices.length - 1)
+          : 0;
+        activeIndices.forEach((index, chunkIndex) => {
+          setOperationTimer(() => {
+            if (sequenceStates[index] === 'typed' || sequenceStates[index] === 'writing') {
+              setSequenceIndexPlain(index);
+              pulseAccent(index, { duration: accentDuration });
+              if (onCorrect && spans[index].dataset.char.trim()) {
+                onCorrect({
+                  effect: api,
+                  index,
+                  characterCount: activeIndices.length,
+                  span: spans[index]
+                });
+              }
+            }
+            if (chunkIndex === activeIndices.length - 1) settleCorrection(true);
+          }, chunkIndex * correctionStep);
+        });
+      };
+      const operation = {
+        write,
+        correction,
+        completed: Promise.all([write, correction])
+          .then(results => results.every(result => result.completed)),
+        cancel({ finalize = false } = {}) {
+          operationTimers.forEach(id => window.clearTimeout(id));
+          operationTimers.clear();
+          if (finalize) finalizeSequenceIndices(activeIndices);
+          else {
+            finalizeSequenceIndices(activeIndices.filter(index => (
+              sequenceStates[index] === 'typed'
+            )));
+            requeueSequenceIndices(activeIndices.filter(index => (
+              sequenceStates[index] === 'writing'
+            )));
+          }
+          settleWrite(false);
+          settleCorrection(false);
+        }
+      };
+
+      if (!activeIndices.length) {
+        writeSettled = true;
+        correctionSettled = true;
+        resolveWrite({ completed: true });
+        resolveCorrection({ completed: true });
+        return operation;
+      }
+
+      sequenceOperations.add(operation);
+      activeSequenceWrites += 1;
+      isHiding = false;
+      delete el.dataset.leetCollapsed;
+      if (suggestionRow) suggestionRow.dataset.suggestionState = 'appearing';
+      activeIndices.forEach(index => { sequenceStates[index] = 'writing'; });
+      syncSequenceElementState();
+      const typeStep = activeIndices.length > 1
+        ? writeDuration / (activeIndices.length - 1)
+        : 0;
+      activeIndices.forEach((index, chunkIndex) => {
+        setOperationTimer(() => {
+          if (sequenceStates[index] === 'writing') {
+            const span = spans[index];
+            span.style.minWidth = '';
+            span.style.opacity = '1';
+            setChar(index, 'leet');
+            setTone(index, 'muted');
+            span.dataset.typed = 'true';
+            sequenceStates[index] = 'typed';
+            if (onType && span.dataset.char.trim()) {
+              onType({
+                effect: api,
+                index,
+                characterCount: activeIndices.length,
+                span
+              });
+            }
+          }
+          if (chunkIndex === activeIndices.length - 1) {
+            settleWrite(true);
+            startCorrection();
+          }
+        }, chunkIndex * typeStep);
+      });
+      return operation;
+    }
+
     function prepareHidden({ reserveSpace = !growsFromEmpty } = {}) {
       clearTimers();
       clearAccentTimers();
+      cancelSequenceOperations();
       isHiding = false;
       el.dataset.leetState = 'idle';
       if (reserveSpace) delete el.dataset.leetCollapsed;
       else el.dataset.leetCollapsed = 'true';
       if (suggestionRow) suggestionRow.dataset.suggestionState = 'hidden';
       spans.forEach((span, index) => {
+        sequenceStates[index] = 'pending';
         delete span.dataset.typed;
         if (reserveSpace) {
           setChar(index, 'plain');
@@ -1524,11 +1837,13 @@
     function showPlain() {
       clearTimers();
       clearAccentTimers();
+      cancelSequenceOperations({ finalize: true });
       isHiding = false;
       hoveredIndices = new Set();
       el.dataset.leetState = 'ready';
       delete el.dataset.leetCollapsed;
       spans.forEach((span, index) => {
+        sequenceStates[index] = 'corrected';
         setChar(index, 'plain');
         setTone(index);
         span.style.minWidth = '';
@@ -1549,10 +1864,12 @@
     function hide() {
       clearTimers();
       clearAccentTimers();
+      cancelSequenceOperations();
       isHiding = true;
       el.dataset.leetState = 'hidden';
       if (suggestionRow) suggestionRow.dataset.suggestionState = 'hidden';
       spans.forEach((span, index) => {
+        sequenceStates[index] = 'pending';
         setTimer(() => {
           delete span.dataset.typed;
           span.textContent = '';
@@ -1576,6 +1893,7 @@
       playLinesAsLeet,
       replayAllLeet,
       prepareHidden,
+      prepareSequenceHidden,
       showPlain,
       hide,
       clearHover,
@@ -1586,7 +1904,16 @@
       getCharacterCount,
       getAnimatedCharacterCount,
       getLastCharacterIndexBefore,
-      getLinesPlayDuration
+      getLinesPlayDuration,
+      getPendingSequenceChunk,
+      getPendingSequenceCount,
+      getSequenceRect,
+      playSequenceChunk,
+      finalizeSequenceBefore,
+      finalizeActiveSequenceOutside,
+      finalizeSequenceIndices,
+      requeueSequenceIndices,
+      cancelSequenceOperations
     };
     return api;
   }
@@ -1761,359 +2088,6 @@
     return Math.min(maximum, Math.max(minimum, value));
   }
 
-  function buildPageLeetTimingPlan(screenName, activeEffects, {
-    timingSource = screensByName.get(screenName),
-    minimumTotalDuration = pageLeetTiming.minimumTotalDuration,
-    maximumTotalDuration = pageLeetTiming.maximumTotalDuration
-  } = {}) {
-    const requestedTotalDuration = Number(timingSource?.dataset.leetDuration);
-    const requestedWriteDuration = Number(timingSource?.dataset.leetWriteDuration);
-    const items = activeEffects.map(effect => {
-      const fontSize = parseFloat(getComputedStyle(effect.el).fontSize)
-        || pageLeetTiming.fontReferenceSize;
-      const characterCount = Math.max(1, effect.getCharacterCount());
-      const fontFactor = clampPageTiming(
-        Math.sqrt(fontSize / pageLeetTiming.fontReferenceSize),
-        pageLeetTiming.minimumFontFactor,
-        pageLeetTiming.maximumFontFactor
-      );
-      const contentFactor = Math.sqrt(characterCount) * fontFactor;
-      const naturalWriteDuration = clampPageTiming(
-        pageLeetTiming.writeBaseDuration
-          + contentFactor * pageLeetTiming.writeCharacterFactor,
-        pageLeetTiming.minimumWriteDuration,
-        pageLeetTiming.maximumWriteDuration
-      );
-      const naturalCorrectionDuration = clampPageTiming(
-        pageLeetTiming.correctionBaseDuration
-          + contentFactor * pageLeetTiming.correctionCharacterFactor,
-        pageLeetTiming.minimumCorrectionDuration,
-        pageLeetTiming.maximumCorrectionDuration
-      );
-      return {
-        effect,
-        characterCount,
-        fontSize,
-        naturalWriteDuration,
-        naturalCorrectionDuration
-      };
-    });
-    const naturalWriteDuration = items.reduce(
-      (total, item) => total + item.naturalWriteDuration,
-      0
-    );
-    const naturalCorrectionDuration = items.reduce(
-      (total, item) => total + item.naturalCorrectionDuration,
-      0
-    );
-    const naturalTotalDuration = naturalWriteDuration + naturalCorrectionDuration;
-    const totalDuration = Number.isFinite(requestedTotalDuration) && requestedTotalDuration > 0
-      ? requestedTotalDuration
-      : clampPageTiming(
-        naturalTotalDuration,
-        minimumTotalDuration,
-        maximumTotalDuration
-      );
-    const automaticScale = naturalTotalDuration
-      ? totalDuration / naturalTotalDuration
-      : 1;
-    const automaticWriteDuration = naturalWriteDuration * automaticScale;
-    const writeDuration = Number.isFinite(requestedWriteDuration) && requestedWriteDuration >= 0
-      ? Math.min(requestedWriteDuration, totalDuration)
-      : automaticWriteDuration;
-    const writeScale = naturalWriteDuration
-      ? writeDuration / naturalWriteDuration
-      : 1;
-    const correctionDuration = Math.max(0, totalDuration - writeDuration);
-    const correctionScale = naturalCorrectionDuration
-      ? correctionDuration / naturalCorrectionDuration
-      : 1;
-    items.forEach(item => {
-      item.writeDuration = item.naturalWriteDuration * writeScale;
-    });
-    items.forEach(item => {
-      item.correctionDuration = item.naturalCorrectionDuration * correctionScale;
-    });
-    const plannedWriteDuration = items.reduce(
-      (total, item) => total + item.writeDuration,
-      0
-    );
-    const plannedCorrectionDuration = items.reduce(
-      (total, item) => total + item.correctionDuration,
-      0
-    );
-
-    return {
-      screenName,
-      characterCount: items.reduce((total, item) => total + item.characterCount, 0),
-      naturalTotalDuration,
-      totalDuration: plannedWriteDuration + plannedCorrectionDuration,
-      writeDuration: plannedWriteDuration,
-      correctionDuration: plannedCorrectionDuration,
-      items
-    };
-  }
-
-  function getEffectOwners(effects, selector) {
-    return [...new Set(
-      effects
-        .map(effect => effect.el.closest(selector))
-        .filter(Boolean)
-    )];
-  }
-
-  function prepareLeetSequenceUi(effects) {
-    getEffectOwners(effects, '.suggestion').forEach(suggestion => {
-      delete suggestion.dataset.suggestionIconCorrected;
-    });
-    const finalMessageEffects = effects.filter(effect => (
-      getMessageActionContext(effect)
-    ));
-    getEffectOwners(finalMessageEffects, '[data-message]').forEach(message => {
-      const messageActions = message.querySelector('[data-message-actions]');
-      if (!messageActions) return;
-      messageActions.dataset.messageActionsState = 'hidden';
-      messageActions.dataset.messageActionsCorrected = 'false';
-      messageActions.querySelectorAll('.message-action').forEach(action => {
-        delete action.dataset.messageActionCorrected;
-      });
-    });
-  }
-
-  function createDeferred() {
-    let isSettled = false;
-    let resolvePromise;
-    const promise = new Promise(resolve => {
-      resolvePromise = resolve;
-    });
-    return {
-      promise,
-      resolve(value) {
-        if (isSettled) return;
-        isSettled = true;
-        resolvePromise(value);
-      }
-    };
-  }
-
-  function isPageSequenceActive(screenName, sequenceVersion) {
-    return body.dataset.screen === screenName
-      && pageSequenceVersion === sequenceVersion;
-  }
-
-  function getContentGenerationBoundaryY() {
-    const boundaryRect = viewportBoundaryElement?.getBoundingClientRect();
-    if (
-      boundaryRect
-      && boundaryRect.top > 0
-      && boundaryRect.top < window.innerHeight
-    ) {
-      return boundaryRect.top;
-    }
-    return Math.max(0, window.innerHeight - pageLeetTiming.foldBottomInset);
-  }
-
-  function getViewportRevealRootMargin() {
-    const bottomInset = Math.max(
-      0,
-      window.innerHeight - getContentGenerationBoundaryY()
-    );
-    return `0px 0px -${bottomInset}px 0px`;
-  }
-
-  function getSequenceFoldTarget(timingPlan) {
-    const cutoffY = getContentGenerationBoundaryY();
-    let target = null;
-    timingPlan.items.forEach(item => {
-      const index = item.effect.getLastCharacterIndexBefore(cutoffY);
-      if (index >= 0) target = { effect: item.effect, index };
-    });
-    if (!target) {
-      const lastItem = timingPlan.items.at(-1);
-      if (lastItem) {
-        target = {
-          effect: lastItem.effect,
-          index: Math.max(0, lastItem.effect.getCharacterCount() - 1)
-        };
-      }
-    }
-    return { ...target, cutoffY };
-  }
-
-  function getMessageActionContext(effect) {
-    const message = effect.el.closest('[data-message]');
-    const messageBody = message?.querySelector('[data-message-body]');
-    const messageActions = message?.querySelector('[data-message-actions]');
-    if (!messageBody || !messageActions) return null;
-    const finalBodyEffect = contentLeetTexts
-      .filter(candidate => (
-        candidate.el === messageBody || messageBody.contains(candidate.el)
-      ))
-      .at(-1);
-    if (effect !== finalBodyEffect) return null;
-    return {
-      messageActions,
-      actions: [...messageActions.querySelectorAll('.message-action')]
-    };
-  }
-
-  function revealMessageActions(effect) {
-    const context = getMessageActionContext(effect);
-    if (!context) return false;
-    context.messageActions.dataset.messageActionsState = 'visible';
-    return true;
-  }
-
-  function syncMessageActionCorrection(effect, index, characterCount) {
-    const context = getMessageActionContext(effect);
-    if (!context || !context.actions.length) return;
-    const progress = (index + 1) / Math.max(1, characterCount);
-    context.actions.forEach((action, actionIndex) => {
-      const threshold = (actionIndex + 1) / context.actions.length;
-      if (progress >= threshold) action.dataset.messageActionCorrected = 'true';
-    });
-  }
-
-  function completeMessageActionCorrection(effect) {
-    const context = getMessageActionContext(effect);
-    if (!context) return;
-    const timestamp = context.messageActions.querySelector(
-      '[data-message-generated-at]'
-    );
-    const timestampEffect = contentLeetTexts.find(candidate => (
-      candidate.el === timestamp
-    ));
-    timestampEffect?.showPlain();
-    context.messageActions.dataset.messageActionsCorrected = 'true';
-  }
-
-  function runLeetTimingPlan(screenName, timingPlan, sequenceVersion) {
-    const foldTarget = getSequenceFoldTarget(timingPlan);
-    const activeScreen = screensByName.get(screenName);
-    const assistantAvatar = activeScreen?.querySelector('[data-assistant-avatar]');
-    const finalHeaderEffect = timingPlan.items
-      .filter(item => item.effect.el.closest('.top-bar--conversation'))
-      .at(-1)?.effect;
-    const foldReached = createDeferred();
-    const writeStates = new Map(
-      timingPlan.items.map(item => [item.effect, createDeferred()])
-    );
-    const settlePendingWrites = completed => {
-      writeStates.forEach(state => state.resolve(completed));
-    };
-
-    const writing = (async () => {
-      let completed = true;
-      for (const item of timingPlan.items) {
-        if (!isPageSequenceActive(screenName, sequenceVersion)) {
-          completed = false;
-          break;
-        }
-        const naturalDuration = item.effect.getLeetWriteDuration();
-        const timingScale = naturalDuration
-          ? item.writeDuration / naturalDuration
-          : 1;
-        const result = await item.effect.playIn({
-          timingScale,
-          deferCorrection: true,
-          onType: detail => {
-            consumeToken();
-            if (
-              detail.effect === foldTarget.effect
-              && detail.index === foldTarget.index
-            ) {
-              foldReached.resolve(true);
-            }
-          }
-        });
-        const itemCompleted = result.completed
-          && isPageSequenceActive(screenName, sequenceVersion);
-        writeStates.get(item.effect)?.resolve(itemCompleted);
-        if (!itemCompleted) {
-          completed = false;
-          break;
-        }
-        if (item.effect === finalHeaderEffect && assistantAvatar) {
-          assistantAvatar.dataset.assistantAvatarState = 'visible';
-          await new Promise(resolve => {
-            window.setTimeout(resolve, assistantAvatarCascadeDelay);
-          });
-        }
-        const revealedMessageActions = revealMessageActions(item.effect);
-        if (revealedMessageActions) {
-          await new Promise(resolve => {
-            window.setTimeout(resolve, messageFollowupCascadeDelay);
-          });
-        }
-      }
-      settlePendingWrites(false);
-      foldReached.resolve(completed);
-      return completed;
-    })();
-
-    const correcting = (async () => {
-      const canStart = await foldReached.promise;
-      if (!canStart || !isPageSequenceActive(screenName, sequenceVersion)) {
-        return false;
-      }
-      for (const item of timingPlan.items) {
-        const wasWritten = await writeStates.get(item.effect).promise;
-        if (!wasWritten || !isPageSequenceActive(screenName, sequenceVersion)) {
-          return false;
-        }
-        const suggestion = item.effect.el.closest('.suggestion');
-        if (suggestion) suggestion.dataset.suggestionIconCorrected = 'true';
-        const result = await item.effect.correct({
-          duration: item.correctionDuration,
-          onCorrect: detail => {
-            consumeToken();
-            syncMessageActionCorrection(
-              item.effect,
-              detail.index,
-              detail.characterCount
-            );
-          }
-        });
-        if (!result.completed || !isPageSequenceActive(screenName, sequenceVersion)) {
-          return false;
-        }
-        completeMessageActionCorrection(item.effect);
-      }
-      return true;
-    })();
-
-    return {
-      timingPlan,
-      foldTarget,
-      writing,
-      correcting,
-      completed: Promise.all([writing, correcting])
-        .then(results => results.every(Boolean))
-    };
-  }
-
-  function playLeetSequence(screenName, activeEffects, {
-    scope = screensByName.get(screenName),
-    timingSource = scope,
-    minimumTotalDuration = pageLeetTiming.minimumTotalDuration,
-    maximumTotalDuration = pageLeetTiming.maximumTotalDuration
-  } = {}) {
-    if (!scope || !activeEffects.length) return null;
-    prepareLeetSequenceUi(activeEffects);
-    const timingPlan = buildPageLeetTimingPlan(screenName, activeEffects, {
-      timingSource,
-      minimumTotalDuration,
-      maximumTotalDuration
-    });
-    return runLeetTimingPlan(screenName, timingPlan, pageSequenceVersion);
-  }
-
-  function getViewportRevealEffects(group) {
-    return contentLeetTexts.filter(
-      effect => effect.el.closest('[data-reveal-on-scroll]') === group
-    );
-  }
-
   function compareDocumentOrder(first, second) {
     if (first === second) return 0;
     return first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING
@@ -2121,231 +2095,582 @@
       : 1;
   }
 
-  function releaseViewportRevealQueue(screenName) {
-    if (viewportRevealScreenName !== screenName
-      || body.dataset.screen !== screenName) return;
-    viewportRevealIsBlocked = false;
-    processViewportRevealQueue(screenName);
-  }
-
-  function processViewportRevealQueue(screenName) {
-    if (viewportRevealIsBlocked || viewportRevealIsPlaying
-      || viewportRevealScreenName !== screenName
-      || body.dataset.screen !== screenName || !viewportRevealQueue.length) return;
-    viewportRevealIsPlaying = true;
-    const sequenceVersion = pageSequenceVersion;
-    const group = viewportRevealQueue.shift();
-    group.dataset.revealState = 'revealing';
-    globalThis.portfolioProjectImages?.start(group);
-    const effects = getViewportRevealEffects(group);
-
-    const completeGroup = () => {
-      if (!isPageSequenceActive(screenName, sequenceVersion)) return;
-      group.dataset.revealState = 'revealed';
-      viewportRevealIsPlaying = false;
-      processViewportRevealQueue(screenName);
+  function getPageRevealViewport() {
+    const shellHeader = document.querySelector('.site-header');
+    const headerRect = shellHeader?.getBoundingClientRect();
+    const chatboxRect = viewportBoundaryElement?.getBoundingClientRect();
+    const top = headerRect && headerRect.bottom > 0
+      ? Math.min(window.innerHeight, Math.max(0, headerRect.bottom))
+      : 0;
+    const bottom = chatboxRect
+      && chatboxRect.top > top
+      && chatboxRect.top < window.innerHeight
+      ? chatboxRect.top
+      : window.innerHeight;
+    return {
+      top,
+      bottom: Math.max(top, bottom),
+      left: 0,
+      right: window.innerWidth
     };
-
-    if (group.matches('.project-card')) {
-      // Card titles are deliberately outside the page sequence: each title
-      // plays only when its own card enters, so it cannot hold up other cards.
-      cardLeetTexts
-        .filter(effect => effect.el.closest('.project-card') === group)
-        .forEach(effect => effect.playIn({ correctionAfterWrite: true }));
-      window.setTimeout(() => {
-        if (!isPageSequenceActive(screenName, sequenceVersion)) return;
-        group.dataset.revealState = 'revealed';
-      }, projectCardRevealDuration);
-      window.setTimeout(() => {
-        if (!isPageSequenceActive(screenName, sequenceVersion)) return;
-        viewportRevealIsPlaying = false;
-        processViewportRevealQueue(screenName);
-      }, projectCardRevealStagger);
-      return;
-    }
-
-    const sequence = playLeetSequence(screenName, effects, {
-      scope: group,
-      timingSource: group,
-      minimumTotalDuration: viewportRevealTiming.minimumTotalDuration,
-      maximumTotalDuration: viewportRevealTiming.maximumTotalDuration
-    });
-
-    if (!sequence) {
-      completeGroup();
-      return;
-    }
-    sequence.completed.then(completed => {
-      if (completed) completeGroup();
-    });
   }
 
-  function enqueueViewportRevealGroups(groups, screenName) {
-    groups
-      .sort(compareDocumentOrder)
-      .forEach(group => {
-        if (group.dataset.revealState !== 'pending') return;
-        group.dataset.revealState = 'queued';
-        viewportRevealObserver?.unobserve(group);
-        viewportRevealQueue.push(group);
+  function isPageRevealRectVisible(rect, viewport, { fully = false } = {}) {
+    if (!rect || rect.height <= 0 || rect.width < 0) return false;
+    const verticallyVisible = fully
+      ? rect.top >= viewport.top - 0.5 && rect.bottom <= viewport.bottom + 0.5
+      : rect.bottom > viewport.top && rect.top < viewport.bottom;
+    return verticallyVisible
+      && rect.right > viewport.left
+      && rect.left < viewport.right;
+  }
+
+  function comparePageRevealCandidates(first, second) {
+    const topDifference = first.orderTop - second.orderTop;
+    if (Math.abs(topDifference) > pageRevealRowTolerance) return topDifference;
+    const leftDifference = first.orderLeft - second.orderLeft;
+    if (Math.abs(leftDifference) > 1) return leftDifference;
+    return compareDocumentOrder(first.anchor, second.anchor);
+  }
+
+  function getDocumentLayoutPoint(element) {
+    let top = 0;
+    let left = 0;
+    let current = element;
+    while (current instanceof HTMLElement) {
+      top += current.offsetTop;
+      left += current.offsetLeft;
+      current = current.offsetParent;
+    }
+    let ancestor = element.parentElement;
+    while (ancestor && ancestor !== document.body && ancestor !== document.documentElement) {
+      top -= ancestor.scrollTop;
+      left -= ancestor.scrollLeft;
+      ancestor = ancestor.parentElement;
+    }
+    return { top, left };
+  }
+
+  function getTextChunkTiming(effect, characterCount) {
+    const fontSize = parseFloat(getComputedStyle(effect.el).fontSize)
+      || pageLeetTiming.fontReferenceSize;
+    const count = Math.max(1, characterCount);
+    const fontFactor = clampPageTiming(
+      Math.sqrt(fontSize / pageLeetTiming.fontReferenceSize),
+      pageLeetTiming.minimumFontFactor,
+      pageLeetTiming.maximumFontFactor
+    );
+    const contentFactor = Math.sqrt(count) * fontFactor;
+    return {
+      characterCount: count,
+      fontSize,
+      writeDuration: clampPageTiming(
+        pageLeetTiming.writeBaseDuration
+          + contentFactor * pageLeetTiming.writeCharacterFactor,
+        pageLeetTiming.minimumWriteDuration,
+        pageLeetTiming.maximumWriteDuration
+      ),
+      correctionDuration: clampPageTiming(
+        pageLeetTiming.correctionBaseDuration
+          + contentFactor * pageLeetTiming.correctionCharacterFactor,
+        pageLeetTiming.minimumCorrectionDuration,
+        pageLeetTiming.maximumCorrectionDuration
+      )
+    };
+  }
+
+  function getPageRevealComponentElements(activeScreen) {
+    if (!activeScreen) return [];
+    const selectors = [
+      '.project-card',
+      '[data-reveal-in-sequence]',
+      '.page-logo--mobile',
+      '.top-bar--conversation .back-button',
+      '[data-assistant-avatar]',
+      '[data-message-actions]',
+      '.suggestion'
+    ].join(', ');
+    return [...new Set(activeScreen.querySelectorAll(selectors))];
+  }
+
+  function getPageRevealComponentDuration(element) {
+    if (element.matches('.project-card, [data-reveal-in-sequence]')) {
+      return projectCardRevealDuration;
+    }
+    if (element.matches('[data-message-actions]')) return 480;
+    if (element.matches('[data-assistant-avatar]')) return 250;
+    return pageRevealComponentDuration;
+  }
+
+  function createPageRevealScheduler(screenName, activeScreen, activeEffects) {
+    const sequenceVersion = pageSequenceVersion;
+    const componentElements = getPageRevealComponentElements(activeScreen);
+    const components = componentElements.map((element, index) => ({
+      element,
+      index,
+      effects: [],
+      imageHandles: new Set(),
+      state: 'pending'
+    }));
+    const componentsByElement = new Map(
+      components.map(component => [component.element, component])
+    );
+    const effectOwners = new Map();
+    activeEffects.forEach(effect => {
+      const ownerElement = effect.el.closest(
+        '.project-card, [data-reveal-in-sequence], .suggestion, [data-message-actions]'
+      );
+      const owner = componentsByElement.get(ownerElement);
+      if (!owner) return;
+      owner.effects.push(effect);
+      effectOwners.set(effect, owner);
+    });
+
+    const timingPlan = {
+      screenName,
+      mode: 'ordered-cascade',
+      items: [],
+      get characterCount() {
+        return this.items.reduce((total, item) => (
+          total + (item.characterCount || 0)
+        ), 0);
+      },
+      get writeDuration() {
+        return this.items.reduce((total, item) => (
+          total + (item.writeDuration || item.entryDuration || 0)
+        ), 0);
+      },
+      get correctionDuration() {
+        return this.items.reduce((total, item) => (
+          total + (item.correctionDuration || 0)
+        ), 0);
+      },
+      get totalDuration() {
+        return this.writeDuration + this.correctionDuration;
+      }
+    };
+    const schedulerTimers = new Map();
+    const imageHandles = new Set();
+    const carouselListeners = new Map();
+    let destroyed = false;
+    let frame = null;
+    let current = null;
+    let lastScrollY = window.scrollY;
+
+    const isActive = () => !destroyed
+      && body.dataset.screen === screenName
+      && pageSequenceVersion === sequenceVersion;
+
+    function waitForEntry(duration) {
+      return new Promise(resolve => {
+        const id = window.setTimeout(() => {
+          schedulerTimers.delete(id);
+          resolve(true);
+        }, Math.max(0, duration));
+        schedulerTimers.set(id, resolve);
       });
-    viewportRevealQueue.sort(compareDocumentOrder);
-    processViewportRevealQueue(screenName);
-  }
-
-  function setupViewportReveals(screenName) {
-    viewportRevealObserver?.disconnect();
-    viewportRevealObserver = null;
-    viewportRevealQueue = [];
-    viewportRevealIsPlaying = false;
-    viewportRevealScreenName = screenName;
-    const activeScreen = screensByName.get(screenName);
-    const groups = activeScreen
-      ? [...activeScreen.querySelectorAll('[data-reveal-on-scroll]')]
-      : [];
-    groups.forEach(group => {
-      group.dataset.revealState = 'pending';
-      const groupEffects = getViewportRevealEffects(group);
-      prepareLeetSequenceUi(groupEffects);
-      groupEffects.forEach(effect => effect.prepareHidden());
-    });
-    if (!groups.length) return new Set();
-
-    if (typeof IntersectionObserver !== 'function') {
-      enqueueViewportRevealGroups(groups, screenName);
-      return new Set(groups);
     }
 
-    viewportRevealObserver = new IntersectionObserver(entries => {
-      const visibleGroups = entries
-        .filter(entry => entry.isIntersecting)
-        .map(entry => entry.target);
-      if (!visibleGroups.length) return;
-      const visibleProjectCards = visibleGroups.filter(
-        group => group.matches('.project-card')
+    function setComponentState(component, state) {
+      component.state = state;
+      component.element.dataset.revealState = state;
+    }
+
+    function revealComponentUi(component) {
+      const { element } = component;
+      if (element.matches('[data-assistant-avatar]')) {
+        element.dataset.assistantAvatarState = 'visible';
+      }
+      if (element.matches('[data-message-actions]')) {
+        element.dataset.messageActionsState = 'visible';
+        element.dataset.messageActionsCorrected = 'false';
+        element.querySelectorAll('.message-action').forEach(action => {
+          delete action.dataset.messageActionCorrected;
+        });
+      }
+      if (element.matches('.suggestion')) {
+        element.dataset.suggestionState = 'appearing';
+        delete element.dataset.suggestionIconCorrected;
+      }
+    }
+
+    function completeComponentTextUi(component) {
+      const { element } = component;
+      if (element.matches('[data-message-actions]')) {
+        element.dataset.messageActionsCorrected = 'true';
+        element.querySelectorAll('.message-action').forEach(action => {
+          action.dataset.messageActionCorrected = 'true';
+        });
+      }
+      if (element.matches('.suggestion')) {
+        element.dataset.suggestionIconCorrected = 'true';
+      }
+    }
+
+    function registerImageHandle(component, handle) {
+      if (!handle?.cancel) return;
+      component.imageHandles.add(handle);
+      imageHandles.add(handle);
+      handle.completed?.finally(() => {
+        component.imageHandles.delete(handle);
+        imageHandles.delete(handle);
+      });
+    }
+
+    function startVisibleComponentImages(component, viewport = getPageRevealViewport()) {
+      const images = [...component.element.querySelectorAll('img[data-pixel-reveal]')];
+      images.forEach(imageElement => {
+        if (imageElement.dataset.pixelState === 'revealing'
+          || imageElement.dataset.pixelState === 'complete') return;
+        if (component.element.matches('[data-media-carousel]')) {
+          const rect = imageElement.getBoundingClientRect();
+          const visibleWidth = Math.max(
+            0,
+            Math.min(rect.right, viewport.right) - Math.max(rect.left, viewport.left)
+          );
+          const horizontalRatio = rect.width > 0 ? visibleWidth / rect.width : 0;
+          if (!isPageRevealRectVisible(rect, viewport) || horizontalRatio < 0.6) {
+            return;
+          }
+        }
+        const handle = globalThis.portfolioProjectImages?.start(imageElement, {
+          stagger: false
+        });
+        registerImageHandle(component, handle);
+      });
+    }
+
+    function finalizeComponentPlain(component) {
+      if (component.state === 'revealed') return;
+      setComponentState(component, 'revealed');
+      revealComponentUi(component);
+      component.effects.forEach(effect => effect.showPlain());
+      completeComponentTextUi(component);
+      const handle = globalThis.portfolioProjectImages?.start(
+        component.element,
+        { stagger: false }
       );
-      const projectCardGroups = groups.filter(
-        group => group.matches('.project-card')
+      handle?.cancel?.();
+    }
+
+    function prepareComponent(component) {
+      const { element } = component;
+      element.dataset.pageRevealComponent = '';
+      setComponentState(component, 'pending');
+      if (element.matches('[data-assistant-avatar]')) {
+        element.dataset.assistantAvatarState = 'hidden';
+      }
+      if (element.matches('[data-message-actions]')) {
+        element.dataset.messageActionsState = 'hidden';
+        element.dataset.messageActionsCorrected = 'false';
+        element.querySelectorAll('.message-action').forEach(action => {
+          delete action.dataset.messageActionCorrected;
+        });
+      }
+      if (element.matches('.suggestion')) {
+        element.dataset.suggestionState = 'hidden';
+        delete element.dataset.suggestionIconCorrected;
+      }
+    }
+
+    function getCandidateRecord(kind, anchor, rect, details = {}) {
+      return {
+        kind,
+        anchor,
+        rect,
+        orderTop: rect.top + window.scrollY,
+        orderLeft: rect.left + window.scrollX,
+        ...details
+      };
+    }
+
+    function finalizePassedContent(viewport, scrollingDown) {
+      if (!scrollingDown) return;
+      components.forEach(component => {
+        if (component.state !== 'pending') return;
+        const rect = component.element.getBoundingClientRect();
+        if (rect.height > 0 && rect.bottom <= viewport.top) {
+          finalizeComponentPlain(component);
+        }
+      });
+      activeEffects.forEach(effect => {
+        const owner = effectOwners.get(effect);
+        if (owner?.state === 'pending') return;
+        effect.finalizeSequenceBefore(viewport.top);
+      });
+    }
+
+    function collectCandidates(viewport) {
+      const candidates = [];
+      components.forEach(component => {
+        if (component.state !== 'pending') return;
+        const rect = component.element.getBoundingClientRect();
+        if (!isPageRevealRectVisible(rect, viewport)) return;
+        const orderPoint = getDocumentLayoutPoint(component.element);
+        candidates.push(getCandidateRecord(
+          'component',
+          component.element,
+          rect,
+          {
+            component,
+            orderTop: orderPoint.top,
+            orderLeft: orderPoint.left
+          }
+        ));
+      });
+      activeEffects.forEach(effect => {
+        const owner = effectOwners.get(effect);
+        if (owner && owner.state !== 'revealed') return;
+        const chunk = effect.getPendingSequenceChunk(viewport);
+        if (!chunk) return;
+        candidates.push(getCandidateRecord(
+          'text',
+          effect.el,
+          chunk.rect,
+          { effect, indices: chunk.indices, owner }
+        ));
+      });
+      return candidates.sort(comparePageRevealCandidates);
+    }
+
+    function recordTextTiming(candidate, timing, owner = null) {
+      const item = {
+        type: owner ? 'component-text' : 'text',
+        element: candidate.effect.el,
+        owner: owner?.element || null,
+        top: candidate.rect.top + window.scrollY,
+        left: candidate.rect.left,
+        characterCount: timing.characterCount,
+        fontSize: timing.fontSize,
+        writeDuration: timing.writeDuration,
+        correctionDuration: timing.correctionDuration,
+        state: 'writing'
+      };
+      timingPlan.items.push(item);
+      return item;
+    }
+
+    function startTextOperation(effect, indices, rect, owner = null) {
+      const timing = getTextChunkTiming(effect, indices.length);
+      const item = recordTextTiming({ effect, rect }, timing, owner);
+      const operation = effect.playSequenceChunk(indices, {
+        writeDuration: timing.writeDuration,
+        correctionDuration: timing.correctionDuration,
+        onType: consumeToken,
+        onCorrect: consumeToken
+      });
+      operation.write.then(result => {
+        item.state = result.completed ? 'written' : 'cancelled';
+      });
+      operation.correction.then(result => {
+        item.state = result.completed ? 'corrected' : item.state;
+        if (owner && result.completed) completeComponentTextUi(owner);
+      });
+      return operation;
+    }
+
+    async function runTextCandidate(candidate) {
+      const operation = startTextOperation(
+        candidate.effect,
+        candidate.indices,
+        candidate.rect,
+        candidate.owner
       );
-      const furthestVisibleCardTop = Math.max(
-        -Infinity,
-        ...visibleProjectCards.map(card => Math.round(
-          card.getBoundingClientRect().top
+      current = { ...candidate, operation };
+      await operation.write;
+      if (!isActive() || current?.operation !== operation) return;
+      current = null;
+      requestRefresh();
+    }
+
+    async function runComponentCandidate(candidate) {
+      const { component } = candidate;
+      setComponentState(component, 'revealing');
+      revealComponentUi(component);
+      startVisibleComponentImages(component);
+      const entryDuration = getPageRevealComponentDuration(component.element);
+      const item = {
+        type: 'component',
+        element: component.element,
+        top: candidate.orderTop,
+        left: candidate.orderLeft,
+        entryDuration,
+        state: 'revealing'
+      };
+      timingPlan.items.push(item);
+      const viewport = getPageRevealViewport();
+      const textOperations = component.effects
+        .map(effect => ({
+          effect,
+          chunk: effect.getPendingSequenceChunk(viewport, {
+            allVisibleLines: true
+          })
+        }))
+        .filter(entry => entry.chunk)
+        .sort((first, second) => comparePageRevealCandidates(
+          getCandidateRecord('text', first.effect.el, first.chunk.rect),
+          getCandidateRecord('text', second.effect.el, second.chunk.rect)
         ))
-      );
-      const projectCardRowTops = [...new Set(projectCardGroups.map(card => (
-        Math.round(card.getBoundingClientRect().top)
-      )))].sort((first, second) => first - second);
-      const nextProjectCardRowTop = projectCardRowTops.find(
-        top => top > furthestVisibleCardTop + 1
-      );
-      const cardLookahead = Number.isFinite(nextProjectCardRowTop)
-        ? projectCardGroups.filter(card => (
-          Math.round(card.getBoundingClientRect().top)
-            <= nextProjectCardRowTop + 1
-        ))
-        : [];
-      const revealCandidates = [...new Set([
-        ...visibleGroups,
-        ...cardLookahead
-      ])];
-      const furthestVisibleIndex = Math.max(
-        ...revealCandidates.map(group => groups.indexOf(group))
-      );
-      enqueueViewportRevealGroups(
-        groups.slice(0, furthestVisibleIndex + 1),
-        screenName
-      );
-    }, {
-      threshold: viewportRevealTiming.threshold,
-      rootMargin: getViewportRevealRootMargin()
+        .map(entry => startTextOperation(
+          entry.effect,
+          entry.chunk.indices,
+          entry.chunk.rect,
+          component
+        ));
+      current = { ...candidate, textOperations };
+      await Promise.all([
+        waitForEntry(entryDuration),
+        ...textOperations.map(operation => operation.write)
+      ]);
+      if (!isActive() || current?.component !== component) return;
+      setComponentState(component, 'revealed');
+      item.state = 'revealed';
+      if (!textOperations.length) completeComponentTextUi(component);
+      current = null;
+      requestRefresh();
+    }
+
+    function pump() {
+      if (!isActive() || current) return;
+      const viewport = getPageRevealViewport();
+      const candidates = collectCandidates(viewport);
+      const candidate = candidates[0];
+      if (!candidate) return;
+      if (candidate.kind === 'component') runComponentCandidate(candidate);
+      else runTextCandidate(candidate);
+    }
+
+    function refresh() {
+      frame = null;
+      if (!isActive()) return;
+      const viewport = getPageRevealViewport();
+      const scrollingDown = window.scrollY >= lastScrollY;
+      finalizePassedContent(viewport, scrollingDown);
+      if (current?.kind === 'text') {
+        const rect = current.effect.getSequenceRect(current.indices);
+        if (!isPageRevealRectVisible(rect, viewport, { fully: true })) {
+          const passed = scrollingDown && rect.bottom <= viewport.top;
+          current.operation.cancel({ finalize: passed });
+          current = null;
+        }
+      }
+      activeEffects.forEach(effect => {
+        effect.finalizeActiveSequenceOutside(viewport);
+      });
+      lastScrollY = window.scrollY;
+      pump();
+    }
+
+    function requestRefresh() {
+      if (!isActive() || frame !== null) return;
+      frame = window.requestAnimationFrame(refresh);
+    }
+
+    function onCarouselScroll(component) {
+      if (!['revealing', 'revealed'].includes(component.state)) return;
+      startVisibleComponentImages(component);
+    }
+
+    function destroy() {
+      if (destroyed) return;
+      destroyed = true;
+      if (frame !== null) window.cancelAnimationFrame(frame);
+      frame = null;
+      window.removeEventListener('scroll', requestRefresh);
+      window.removeEventListener('resize', requestRefresh);
+      schedulerTimers.forEach((resolve, id) => {
+        window.clearTimeout(id);
+        resolve(false);
+      });
+      schedulerTimers.clear();
+      carouselListeners.forEach((listener, track) => {
+        track.removeEventListener('scroll', listener);
+      });
+      carouselListeners.clear();
+      current?.operation?.cancel({ finalize: false });
+      current?.textOperations?.forEach(operation => {
+        operation.cancel({ finalize: false });
+      });
+      activeEffects.forEach(effect => effect.cancelSequenceOperations());
+      imageHandles.forEach(handle => handle.cancel());
+      imageHandles.clear();
+    }
+
+    components.forEach(prepareComponent);
+    activeScreen.querySelectorAll('[data-reveal-on-scroll]').forEach(group => {
+      if (!componentsByElement.has(group)) delete group.dataset.revealState;
     });
-    groups.forEach(group => viewportRevealObserver.observe(group));
-    return new Set(groups);
+    components.forEach(component => {
+      const track = component.element.querySelector('[data-media-carousel-track]');
+      if (!track) return;
+      const listener = () => onCarouselScroll(component);
+      carouselListeners.set(track, listener);
+      track.addEventListener('scroll', listener, { passive: true });
+    });
+    window.addEventListener('scroll', requestRefresh, { passive: true });
+    window.addEventListener('resize', requestRefresh);
+    document.fonts?.ready?.then(requestRefresh);
+    requestRefresh();
+
+    return {
+      destroy,
+      refresh: requestRefresh,
+      timingPlan
+    };
   }
 
   function playScreenLeetTexts(screenName) {
     invalidatePageSequences();
-    const activeEffects = [];
     const activeScreen = screensByName.get(screenName);
-    const assistantAvatar = activeScreen?.querySelector('[data-assistant-avatar]');
-    if (assistantAvatar) assistantAvatar.dataset.assistantAvatarState = 'hidden';
+    if (!activeScreen) return null;
+    const activeEffects = [...contentLeetTexts, ...cardLeetTexts]
+      .filter(effect => (
+        effect.el.closest('.screen')?.dataset.screenName === screenName
+      ));
+    [...contentLeetTexts, ...cardLeetTexts].forEach(effect => {
+      if (activeEffects.includes(effect)) effect.prepareSequenceHidden();
+      else effect.prepareHidden();
+    });
+
     if (prefersReducedMotion) {
-      viewportRevealObserver?.disconnect();
-      viewportRevealObserver = null;
-      viewportRevealQueue = [];
-      viewportRevealIsPlaying = false;
-      viewportRevealIsBlocked = false;
-      viewportRevealScreenName = screenName;
-      contentLeetTexts.forEach(effect => {
-        const screen = effect.el.closest('.screen');
-        if (screen?.dataset.screenName === screenName) effect.showPlain();
-        else effect.prepareHidden();
-      });
-      activeScreen?.querySelectorAll('[data-reveal-on-scroll]').forEach(group => {
+      activeEffects.forEach(effect => effect.showPlain());
+      activeScreen.querySelectorAll(
+        '[data-reveal-on-scroll], .project-card, [data-reveal-in-sequence]'
+      ).forEach(group => {
         group.dataset.revealState = 'revealed';
       });
-      activeScreen?.querySelectorAll('[data-message-actions]').forEach(actions => {
+      activeScreen.querySelectorAll('[data-page-reveal-component]').forEach(component => {
+        component.dataset.revealState = 'revealed';
+      });
+      activeScreen.querySelectorAll('[data-message-actions]').forEach(actions => {
         actions.dataset.messageActionsState = 'visible';
         actions.dataset.messageActionsCorrected = 'true';
         actions.querySelectorAll('.message-action').forEach(action => {
           action.dataset.messageActionCorrected = 'true';
         });
       });
-      activeScreen?.querySelectorAll('[data-suggestion-state]').forEach(suggestion => {
+      activeScreen.querySelectorAll('[data-suggestion-state]').forEach(suggestion => {
         suggestion.dataset.suggestionState = 'appearing';
         suggestion.dataset.suggestionIconCorrected = 'true';
       });
-      if (assistantAvatar) assistantAvatar.dataset.assistantAvatarState = 'visible';
-      return null;
-    }
-    const sequenceVersion = pageSequenceVersion;
-    viewportRevealIsBlocked = true;
-    const viewportGroups = setupViewportReveals(screenName);
-
-    contentLeetTexts.forEach(effect => {
-      const screen = effect.el.closest('.screen');
-      if (!screen || screen.dataset.screenName !== screenName) {
-        effect.prepareHidden();
-        return;
-      }
-      if (effect.el.closest('[data-message-actions]')) {
-        effect.prepareHidden();
-        return;
-      }
-      const viewportGroup = effect.el.closest('[data-reveal-on-scroll]');
-      if (viewportGroup && viewportGroups.has(viewportGroup)) {
-        effect.prepareHidden();
-        return;
-      }
-      effect.prepareHidden();
-      activeEffects.push(effect);
-    });
-
-    if (!activeEffects.length) {
-      if (assistantAvatar) assistantAvatar.dataset.assistantAvatarState = 'visible';
-      releaseViewportRevealQueue(screenName);
+      activeScreen.querySelectorAll('[data-assistant-avatar]').forEach(avatar => {
+        avatar.dataset.assistantAvatarState = 'visible';
+      });
+      pageLeetTimingPlans.set(screenName, {
+        screenName,
+        mode: 'reduced-motion',
+        items: []
+      });
       return null;
     }
 
-    const sequence = playLeetSequence(screenName, activeEffects, {
-      scope: activeScreen,
-      timingSource: activeScreen
-    });
-    if (!sequence) {
-      releaseViewportRevealQueue(screenName);
-      return null;
-    }
-    pageLeetTimingPlans.set(screenName, sequence.timingPlan);
-    sequence.writing.then(completed => {
-      if (
-        completed
-        && isPageSequenceActive(screenName, sequenceVersion)
-      ) {
-        releaseViewportRevealQueue(screenName);
-      }
-    });
-    return sequence;
+    pageRevealScheduler = createPageRevealScheduler(
+      screenName,
+      activeScreen,
+      activeEffects
+    );
+    pageLeetTimingPlans.set(screenName, pageRevealScheduler.timingPlan);
+    return pageRevealScheduler;
   }
 
   function consumeToken(amount = 1) {
@@ -2514,6 +2839,20 @@
       tokenCounter?.start();
     }
   });
+
+  window.addEventListener('pageshow', event => {
+    if (!event.persisted) return;
+    const screenName = getScreenNameFromLocation();
+    const activeScreen = screensByName.get(screenName);
+    invalidatePageSequences();
+    if (activeScreen?.querySelector('[data-pixel-reveal]')) {
+      globalThis.portfolioProjectImages?.replay(activeScreen);
+    }
+    window.requestAnimationFrame(() => {
+      if (body.dataset.screen === screenName) playScreenLeetTexts(screenName);
+    });
+  });
+
   globalThis.portfolioTextEffects = {
     leetTexts,
     roles: leetEffectsByRole,

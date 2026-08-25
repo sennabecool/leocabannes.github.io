@@ -7,8 +7,8 @@
   <title>Design System - Leo Cabannes</title>
   <meta name="description" content="Atomic design system, tokens, components and interaction patterns for Leo Cabannes' portfolio." />
   <link rel="icon" type="image/svg+xml" href="../assets/logo.svg" />
-  <link rel="stylesheet" href="../tokens.css?v=141" />
-  <link rel="stylesheet" href="../styles.css?v=219" />
+  <link rel="stylesheet" href="../tokens.css?v=142" />
+  <link rel="stylesheet" href="../styles.css?v=248" />
   <link rel="stylesheet" href="design-system.css?v=5" />
 </head>
 <body class="ds-page">
@@ -129,6 +129,8 @@
             <div class="ds-specimen__heading"><div><span>Atom</span><h3>Typography</h3></div><code>type tokens</code></div>
             <div class="ds-preview ds-preview--type">
               <span class="ds-type ds-type--display">Human-centered design</span>
+              <span class="case-study__section-title">Case study section</span>
+              <span class="case-study__focus-title">Case study focus area</span>
               <span class="ds-type ds-type--body">Generated response paragraph</span>
               <span class="ds-type ds-type--label">TOKENS LEFT / PICO 11.4</span>
             </div>
@@ -173,13 +175,13 @@
             <p class="ds-spec">24px icon controls with subtle hover and press feedback.</p>
           </article>
 
-          <article class="ds-specimen" data-component="Progress Tag" data-searchable="atom project progress tag loading done">
+          <article class="ds-specimen" data-component="Progress Tag" data-searchable="atom image progress chip tag loading done">
             <div class="ds-specimen__heading"><div><span>Atom</span><h3>Progress Tag</h3></div><code>.project-card__tag</code></div>
             <div class="ds-preview ds-preview--row">
               <span class="project-card__tag ds-project-tag"><span class="project-card__tag-progress"><span>60</span><span>%</span></span><span class="project-card__tag-done">DONE!</span></span>
               <span class="project-card__tag ds-project-tag" data-pixel-progress-state="done"><span class="project-card__tag-progress"><span>100</span><span>%</span></span><span class="project-card__tag-done">DONE!</span></span>
             </div>
-            <p class="ds-spec">Image-generation progress and completion states.</p>
+            <p class="ds-spec">Automatically attached to project-card and case-study image generation, with progress and completion states.</p>
           </article>
         </div>
       </section>
@@ -275,6 +277,26 @@
             <p class="ds-spec">Each card can select small, medium or large independently at the mobile and desktop grid breakpoints.</p>
           </article>
 
+          <article class="ds-specimen ds-specimen--wide" data-component="Case Study Content" data-searchable="organism case study project detail media heading summary section focus">
+            <div class="ds-specimen__heading"><div><span>Organism</span><h3>Case Study Content</h3></div><code>.case-study</code></div>
+            <div class="ds-preview">
+              <article class="case-study">
+                <header class="case-study__heading"><p class="case-study__meta">Carrefour Links &middot; 2023</p><h2 class="case-study__title">Bridging retail and brand teams</h2></header>
+                <div class="case-study__media-carousel" data-media-carousel>
+                  <div class="case-study__media-carousel-track" data-media-carousel-track>
+                    <figure class="case-study__media" data-media-slide><img src="../assets/carrefour-links.png" alt="" data-pixel-reveal /></figure>
+                    <figure class="case-study__media" data-media-slide><img src="../assets/carrefour.png" alt="" data-pixel-reveal /></figure>
+                  </div>
+                  <div class="case-study__media-pagination" aria-label="Choose project image"><button type="button" aria-label="Show project image 1" aria-pressed="true"></button><button type="button" aria-label="Show project image 2" aria-pressed="false"></button></div>
+                </div>
+                <p class="case-study__summary">A reusable editorial structure for project context, process and outcomes.</p>
+                <section class="case-study__section"><h3 class="case-study__section-title">The problem</h3><div class="case-study__body"><p>Narrative sections keep a consistent reading rhythm while project content remains semantic HTML.</p><ul role="list"><li data-leet-text>&bull; Use the same KPIs;</li><li data-leet-text>&bull; Track joint projects;</li></ul></div></section>
+                <article class="case-study__focus-item case-study__body"><h4 class="case-study__focus-title">1. Focus area</h4><p>Numbered workstreams reuse the same subsection role.</p></article>
+              </article>
+            </div>
+            <p class="ds-spec">Media is a two-slide mobile carousel and a two-up 8+8-column desktop breakout. Case-study body lists retain semantic disc markers alongside generated Leet text.</p>
+          </article>
+
           <article class="ds-specimen ds-specimen--wide" data-component="Topbar and Chatbox" data-searchable="organism topbar chatbox shell menu open close live">
             <div class="ds-specimen__heading"><div><span>Organism</span><h3>Topbar + Chatbox</h3></div><code>Live shell</code></div>
             <div class="ds-frame-toolbar" data-frame-controls="shell-preview"><span>Interactive preview</span><div><button type="button" data-frame-size="desktop" aria-pressed="true">Desktop</button><button type="button" data-frame-size="mobile" aria-pressed="false">Mobile</button></div></div>
@@ -289,6 +311,7 @@
         <div class="ds-template-grid">
           <article class="ds-template" data-component="Home Hero Template" data-searchable="template home hero logo title message suggestions"><h3>Home Hero</h3><div class="ds-template-map"><span>Topbar</span><strong>Logo + Title</strong><span>Message</span><span>Message Actions</span><span>Prompt Suggestions</span><em>Chatbox</em></div><p>Hero content starts 112px below the shell topbar.</p></article>
           <article class="ds-template" data-component="Conversation Template" data-searchable="template conversation subpage back bubble message"><h3>Conversation Subpage</h3><div class="ds-template-map"><span>Topbar</span><strong>Back + User Prompt</strong><span>Assistant + Message</span><span>Message Actions</span><span>Prompt Suggestions</span><em>Chatbox</em></div><p>Shared structure for every page outside Home.</p></article>
+          <article class="ds-template" data-component="Case Study Template" data-searchable="template case study project detail narrative media"><h3>Case Study</h3><div class="ds-template-map"><span>Topbar</span><strong>Back + Project Prompt</strong><span>Assistant + Intro</span><span>Project Media + Narrative</span><span>Message Actions</span><span>Related Prompts</span><em>Chatbox</em></div><p>Standalone project pages use the centered 628px conversation column and reusable case-study content contract.</p></article>
         </div>
       </section>
 
@@ -297,6 +320,7 @@
         <div class="ds-page-previews">
           <article class="ds-page-preview" data-component="Home Page" data-searchable="page home production preview"><div class="ds-frame-toolbar" data-frame-controls="home-preview"><div><strong>Home</strong><a href="../index.html#home">Open page</a></div><div><button type="button" data-frame-size="desktop" aria-pressed="true">Desktop</button><button type="button" data-frame-size="mobile" aria-pressed="false">Mobile</button></div></div><div class="ds-live-frame" id="home-preview"><iframe src="../index.html?ds-preview=1#home" title="Home page preview" loading="lazy"></iframe></div></article>
           <article class="ds-page-preview" data-component="Work Page" data-searchable="page work production preview"><div class="ds-frame-toolbar" data-frame-controls="work-preview"><div><strong>Work</strong><a href="../work/">Open page</a></div><div><button type="button" data-frame-size="desktop" aria-pressed="true">Desktop</button><button type="button" data-frame-size="mobile" aria-pressed="false">Mobile</button></div></div><div class="ds-live-frame" id="work-preview"><iframe src="../work/index.html?ds-preview=1" title="Work page preview" loading="lazy"></iframe></div></article>
+          <article class="ds-page-preview" data-component="Carrefour Links Page" data-searchable="page case study carrefour production preview"><div class="ds-frame-toolbar" data-frame-controls="carrefour-preview"><div><strong>Carrefour Links</strong><a href="../work/carrefour-links/">Open page</a></div><div><button type="button" data-frame-size="desktop" aria-pressed="true">Desktop</button><button type="button" data-frame-size="mobile" aria-pressed="false">Mobile</button></div></div><div class="ds-live-frame" id="carrefour-preview"><iframe src="../work/carrefour-links/index.html?ds-preview=1" title="Carrefour Links case study preview" loading="lazy"></iframe></div></article>
         </div>
       </section>
 
@@ -305,7 +329,7 @@
   </div>
 
   <div class="ds-toast" data-ds-toast role="status" aria-live="polite"></div>
-  <script src="../project-image-reveal.js?v=8"></script>
+  <script src="../project-image-reveal.js?v=11"></script>
   <script src="design-system.js?v=4"></script>
 </body>
 </html>

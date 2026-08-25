@@ -24,7 +24,6 @@ img { display: block; max-width: 100%; }
   --subpage-content-item-gap: var(--space-3);
   --subpage-scroll-bottom: calc(var(--space-3) + 128px + var(--space-10));
   --project-card-reveal-duration: 480ms;
-  --project-card-reveal-stagger: 120ms;
   --project-card-reveal-offset: 12px;
   --project-image-reveal-delay: 160ms;
   --viewport-reveal-threshold: 0.05;
@@ -99,6 +98,8 @@ body {
       position: relative;
       top: auto;
       left: auto;
+      margin: 0 auto;
+      transform: none;
       pointer-events: auto;
     }
   }
@@ -192,6 +193,20 @@ body:not([data-page-layout="hero"]) .app {
   transform: scale(1);
 }
 
+/* Runtime-owned page apparition state. Component-specific motion (avatar
+   scale, suggestion rules, card/media depixelation) remains additive. */
+[data-page-reveal-component][data-reveal-state="pending"],
+[data-page-reveal-component][data-reveal-state="queued"] {
+  opacity: 0;
+  translate: 0 8px;
+}
+
+[data-page-reveal-component][data-reveal-state="revealing"],
+[data-page-reveal-component][data-reveal-state="revealed"] {
+  opacity: 1;
+  translate: 0 0;
+}
+
 .subpage-content .project-grid {
   gap: var(--subpage-content-item-gap);
 }
@@ -252,8 +267,10 @@ body:not([data-page-layout="hero"]) .app {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24), inset 0 0 0 var(--stroke-thin) rgba(0, 0, 0, 0.03);
   backdrop-filter: blur(6px) saturate(180%);
   -webkit-backdrop-filter: blur(6px) saturate(180%);
-  transition: background-color var(--duration-fast)
-    var(--easing-default);
+  transition:
+    background-color var(--duration-fast) var(--easing-default),
+    opacity var(--duration-fast) var(--easing-default),
+    translate var(--duration-fast) var(--easing-default);
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -309,15 +326,15 @@ body:not([data-page-layout="hero"]) .app {
 }
 
 .site-header {
-  position: sticky;
+  position: fixed;
   top: 0;
-  left: auto;
+  left: 50%;
   width: calc(100vw - (2 * var(--space-6)));
   height: 80px;
   z-index: 30;
   padding: 0;
-  margin: 0 auto;
-  transform: none;
+  margin: 0;
+  transform: translateX(-50%);
   transition: transform 300ms ease-in-out;
 }
 
@@ -363,6 +380,9 @@ body:not([data-page-layout="hero"]) .app {
 .page-logo--mobile {
   flex: 0 0 var(--space-14);
   margin-bottom: var(--space-6);
+  transition:
+    opacity var(--duration-fast) var(--easing-default),
+    translate var(--duration-fast) var(--easing-default);
 }
 
 .screen[data-page-layout="hero"] .page-hero {
@@ -415,6 +435,9 @@ body:not([data-page-layout="hero"]) .app {
   width: 100%;
   height: var(--space-6);
   color: var(--fg-muted);
+  transition:
+    opacity var(--duration-fast) var(--easing-default),
+    translate var(--duration-fast) var(--easing-default);
 }
 
 .message-actions__buttons {
@@ -491,6 +514,7 @@ body:not([data-page-layout="hero"]) .app {
     translate 480ms var(--easing-default);
 }
 
+.message-actions[data-message-actions-state="visible"] .message-actions__time,
 .message-actions[data-message-actions-corrected="true"] .message-actions__time {
   opacity: 1;
   translate: 0 0;
@@ -585,6 +609,264 @@ body:not([data-page-layout="hero"]) .app {
 .answer .suggestions { margin-top: var(--space-6); }
 
 /* =========================================================
+   Case study template
+   ========================================================= */
+.screen.page--case-study {
+  gap: calc(var(--space-6) * 2);
+}
+
+.page--case-study .question-chip {
+  padding-block: 13px;
+}
+
+.case-study {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  width: 100%;
+  min-width: 0;
+  color: var(--fg-muted);
+}
+
+.case-study :where(p, h2, h3, h4, figure, ul) {
+  margin: 0;
+}
+
+.case-study__intro,
+.case-study__body,
+.case-study__cta {
+  font-size: var(--fz-paragraph);
+  line-height: var(--lh-body);
+  font-weight: var(--fw-regular);
+  letter-spacing: 0;
+}
+
+.case-study__media {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 171 / 148;
+  overflow: hidden;
+  background: var(--bg-surface);
+  border: var(--stroke-thin) solid #e9ebeb;
+  border-radius: var(--radius-sm);
+}
+
+.case-study__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.case-study__media-carousel {
+  align-self: stretch;
+  min-width: 0;
+  transition:
+    opacity var(--project-card-reveal-duration) var(--easing-default),
+    translate var(--project-card-reveal-duration) var(--easing-default);
+}
+
+.case-study__media-carousel:is(
+  [data-reveal-state="pending"],
+  [data-reveal-state="queued"]
+) {
+  opacity: 0;
+  translate: 0 var(--project-card-reveal-offset);
+}
+
+.case-study__media-carousel:is(
+  [data-reveal-state="revealing"],
+  [data-reveal-state="revealed"]
+) {
+  opacity: 1;
+  translate: 0 0;
+}
+
+.case-study__media-carousel-track {
+  display: flex;
+  gap: var(--space-3);
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  scroll-snap-type: inline mandatory;
+  scrollbar-width: none;
+}
+
+.case-study__media-carousel-track::-webkit-scrollbar {
+  display: none;
+}
+
+.case-study__media-carousel .case-study__media {
+  flex: 0 0 100%;
+  min-width: 0;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.case-study__media-pagination {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.case-study__media-pagination button {
+  width: var(--space-2);
+  height: var(--space-2);
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--border-default);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--easing-default),
+    transform var(--duration-fast) var(--easing-default);
+}
+
+.case-study__media-pagination button[aria-pressed="true"] {
+  background: var(--fg-default);
+  transform: scale(1.25);
+}
+
+.case-study__heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* The base 24px case-study gap plus this margin creates 48px from the opening
+   assistant message to the case supertitle. */
+.case-study__intro + .case-study__heading {
+  margin-top: var(--space-6);
+}
+
+/* The base 24px case-study gap plus these margins creates 48px from the case
+   title to the hero media and from the media edge to the summary. On mobile,
+   the pagination's 20px footprint occupies part of the latter interval. */
+.case-study__heading + .case-study__media-carousel {
+  margin-top: var(--space-6);
+}
+
+.case-study__media-carousel + .case-study__summary {
+  margin-top: var(--space-1);
+}
+
+.case-study__meta {
+  font-size: 14px;
+  line-height: 16px;
+  font-weight: var(--fw-medium);
+  letter-spacing: -0.28px;
+  text-transform: uppercase;
+}
+
+.case-study__meta a {
+  text-decoration: underline;
+  text-underline-position: from-font;
+}
+
+.case-study__title {
+  margin: 0;
+  color: var(--fg-default);
+  font-size: 28px;
+  line-height: var(--lh-h1);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0;
+}
+
+.case-study__summary {
+  color: var(--fg-muted);
+  font-size: var(--fz-h3);
+  line-height: var(--lh-h3);
+  font-weight: var(--fw-semibold);
+}
+
+.case-study__overview,
+.case-study__body:not(p),
+.case-study__section,
+.case-study__focus-list,
+.case-study__focus-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.case-study__section {
+  gap: var(--space-6);
+}
+
+.case-study__overview + .case-study__section,
+.case-study__section + .case-study__section {
+  margin-top: var(--space-6);
+}
+
+.case-study__focus-list {
+  gap: var(--space-6);
+}
+
+.case-study__section-title {
+  align-self: flex-start;
+  max-width: 100%;
+  color: var(--fg-default);
+  font-size: var(--fz-h2);
+  line-height: var(--lh-h2);
+  font-weight: var(--fw-bold);
+}
+
+.case-study__body strong {
+  color: var(--fg-default);
+  font-weight: var(--fw-bold);
+}
+
+/* Rich paragraphs split their generated text into semantic emphasis runs.
+   `display: contents` keeps every generated word in one wrapping context;
+   the separator restores spaces trimmed by the text-effect controller. */
+.case-study p > [data-leet-text] {
+  display: contents;
+}
+
+.case-study p > [data-leet-text] + [data-leet-text]::before {
+  content: " ";
+}
+
+.case-study__body ul {
+  margin: 0;
+  padding-inline-start: var(--space-6);
+  list-style: none;
+}
+
+.case-study__body li {
+  display: list-item;
+  padding-inline-start: var(--space-3);
+  text-indent: calc(-1 * var(--space-3));
+}
+
+/* `text-indent` is inherited. Reset it on each generated inline-block word so
+   only the list item's first line receives the hanging indent. */
+.case-study__body li .leet-word {
+  text-indent: 0;
+}
+
+.case-study__body li + li {
+  margin-top: var(--space-2);
+}
+
+.case-study__focus-title {
+  margin-bottom: var(--space-3);
+  color: var(--fg-default);
+  font-size: var(--fz-h3);
+  line-height: var(--lh-h3);
+  font-weight: var(--fw-semibold);
+}
+
+.case-study__section--result .case-study__media-carousel {
+  margin-top: 0;
+}
+
+.page--case-study .subpage-content > .message + .suggestions {
+  margin-top: var(--space-6);
+}
+
+/* =========================================================
    Suggestion row (link-like, with corner-down-right icon)
    ========================================================= */
 .suggestion {
@@ -601,7 +883,10 @@ body:not([data-page-layout="hero"]) .app {
   font-weight: var(--fw-medium);
   line-height: 24px;
   text-align: left;
-  transition: background-color var(--duration-fast) var(--easing-default);
+  transition:
+    background-color var(--duration-fast) var(--easing-default),
+    opacity var(--duration-fast) var(--easing-default),
+    translate var(--duration-fast) var(--easing-default);
 }
 .suggestion::after,
 .suggestion:first-of-type::before {
@@ -741,7 +1026,8 @@ html[data-project-image-reveal="enabled"] img[data-pixel-reveal][data-pixel-stat
   opacity: 1;
 }
 
-.project-card__pixel-canvas {
+.project-card__pixel-canvas,
+.case-study__pixel-canvas {
   position: absolute;
   display: block;
   pointer-events: none;
@@ -758,6 +1044,14 @@ html[data-project-image-reveal="enabled"] img[data-pixel-reveal][data-pixel-stat
 }
 
 .project-card__image > .project-card__pixel-canvas {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  z-index: 1;
+}
+
+.case-study__media > .case-study__pixel-canvas {
   inset: 0;
   width: 100%;
   height: 100%;
@@ -807,7 +1101,7 @@ html[data-project-image-reveal="enabled"] img[data-pixel-reveal][data-pixel-stat
   padding-block: 0;
   padding-inline: 4px;
   background: var(--bg-surface);
-  border: var(--stroke-thin) solid var(--project-card-border);
+  border: var(--stroke-thin) solid var(--project-card-border, #e9ebeb);
   border-radius: 2px;
   font-size: 11px;
   line-height: 8px;
@@ -864,6 +1158,11 @@ html[data-project-image-reveal="enabled"] img[data-pixel-reveal][data-pixel-stat
 
 .project-card__tag[hidden] {
   display: none;
+}
+
+.case-study__media > .image-progress-chip {
+  top: var(--space-3);
+  right: var(--space-3);
 }
 
 /* Split card: half title (dark), half image */
@@ -1513,7 +1812,13 @@ body[data-menu="open"] .menu-btn__icon { transform: rotate(0.625turn); }
    ========================================================= */
 @media (max-width: 767px) {
   .site-header[data-scroll-hidden] {
-    transform: translateY(-128px);
+    transform: translate(-50%, -128px);
+  }
+
+  @supports (-webkit-touch-callout: none) {
+    .safari-top-tint > .site-header[data-scroll-hidden] {
+      transform: translateY(-128px);
+    }
   }
 }
 
@@ -1565,6 +1870,31 @@ body[data-menu="open"] .menu-btn__icon { transform: rotate(0.625turn); }
     grid-row: span 2;
     height: 100%;
     aspect-ratio: auto;
+  }
+
+  .case-study__media-carousel {
+    align-self: center;
+    width: min(1296px, calc(100vw - 40px));
+  }
+
+  .case-study__media-carousel-track {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-6);
+    overflow: visible;
+    scroll-snap-type: none;
+  }
+
+  .case-study__media-carousel .case-study__media {
+    width: auto;
+  }
+
+  .case-study__media-pagination {
+    display: none;
+  }
+
+  .case-study__media-carousel + .case-study__summary {
+    margin-top: var(--space-6);
   }
 
   .app {

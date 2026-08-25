@@ -130,16 +130,55 @@
     return start + (end - start) * easedProgress;
   }
 
-  function waitForImage(image) {
-    if (image.complete && image.naturalWidth > 0) {
+  function createDeferred() {
+    let settled = false;
+    let resolvePromise;
+    const promise = new Promise(resolve => {
+      resolvePromise = resolve;
+    });
+
+    return {
+      get settled() { return settled; },
+      promise,
+      resolve(value) {
+        if (settled) return;
+        settled = true;
+        resolvePromise(value);
+      }
+    };
+  }
+
+  function waitForImage(image, { signal } = {}) {
+    if (image.complete) {
+      if (!image.naturalWidth) {
+        return Promise.reject(new Error('Image failed to load'));
+      }
       return typeof image.decode === 'function'
         ? image.decode().catch(() => {})
         : Promise.resolve();
     }
 
     return new Promise((resolve, reject) => {
-      image.addEventListener('load', resolve, { once: true });
-      image.addEventListener('error', reject, { once: true });
+      const cleanup = () => {
+        image.removeEventListener('load', handleLoad);
+        image.removeEventListener('error', handleError);
+        signal?.removeEventListener('abort', handleAbort);
+      };
+      const settle = (callback, value) => {
+        cleanup();
+        callback(value);
+      };
+      const handleLoad = () => settle(resolve);
+      const handleError = event => settle(reject, event);
+      const handleAbort = () => settle(reject, new Error('Image reveal cancelled'));
+
+      if (signal?.aborted) {
+        handleAbort();
+        return;
+      }
+      image.addEventListener('load', handleLoad, { once: true });
+      image.addEventListener('error', handleError, { once: true });
+      signal?.addEventListener('abort', handleAbort, { once: true });
     });
   }
 
@@ -164,13 +203,42 @@
     return { x, y, width, height };
   }
 
+  function createProgressTag(owner) {
+    if (!owner) return null;
+    const tag = document.createElement('span');
+    tag.className = 'project-card__tag image-progress-chip';
+    tag.dataset.pixelProgress = '';
+    tag.setAttribute('aria-hidden', 'true');
+
+    const progress = document.createElement('span');
+    progress.className = 'project-card__tag-progress';
+    const value = document.createElement('span');
+    value.dataset.pixelProgressValue = '';
+    value.textContent = '0';
+    const percentage = document.createElement('span');
+    percentage.textContent = '%';
+    progress.append(value, percentage);
+
+    const done = document.createElement('span');
+    done.className = 'project-card__tag-done';
+    done.dataset.pixelProgressDone = '';
+    done.textContent = 'DONE!';
+
+    tag.append(progress, done);
+    owner.appendChild(tag);
+    return tag;
+  }
+
   class ProjectImageReveal {
     constructor(image, index) {
       this.image = image;
       this.index = index;
-      this.progressTag = this.image
-        .closest('.project-card')
-        ?.querySelector('[data-pixel-progress]') || null;
+      this.progressOwner = this.image.closest(
+        '.project-card, .case-study__media'
+      );
+      this.progressTag = this.progressOwner
+        ?.querySelector(':scope > [data-pixel-progress]')
+        || createProgressTag(this.progressOwner);
       this.progressElement = this.progressTag
         ?.querySelector('[data-pixel-progress-value]') || null;
       this.doneElement = this.progressTag
@@ -202,7 +270,34 @@
       this.hasDrawnPixelImage = false;
       this.started = false;
       this.completed = false;
+      this.cancelled = false;
       this.resizeObserver = null;
+      this.prepareAbortController = typeof AbortController === 'function'
+        ? new AbortController()
+        : null;
+      this.startedDeferred = createDeferred();
+      this.completedDeferred = createDeferred();
+      this.lifecycleHandle = Object.freeze({
+        started: this.startedDeferred.promise,
+        completed: this.completedDeferred.promise,
+        cancel: () => this.cancel()
+      });
+    }
+
+    createLifecycleResult(status, reason = null) {
+      return {
+        image: this.image,
+        status,
+        reason
+      };
+    }
+
+    settleStarted(status = 'started', reason = null) {
+      this.startedDeferred.resolve(this.createLifecycleResult(status, reason));
+    }
+
+    settleCompleted(status = 'completed', reason = null) {
+      this.completedDeferred.resolve(this.createLifecycleResult(status, reason));
     }
 
     async prepare({ startImmediately = false } = {}) {
@@ -211,27 +306,38 @@
       this.image.dataset.pixelState = 'loading';
 
       try {
-        await waitForImage(this.image);
+        await waitForImage(this.image, {
+          signal: this.prepareAbortController?.signal
+        });
       } catch {
-        this.complete({ chargeProgress: false });
+        if (!this.cancelled) {
+          this.complete({ chargeProgress: false, reason: 'image-error' });
+        }
         return;
       }
 
+      if (this.cancelled || this.completed) return;
       if (!this.image.isConnected || !this.image.naturalWidth) {
-        this.complete({ chargeProgress: false });
+        this.complete({ chargeProgress: false, reason: 'image-unavailable' });
         return;
       }
 
       if (prefersReducedMotion || typeof HTMLCanvasElement === 'undefined') {
-        this.complete({ chargeProgress: false });
+        this.complete({
+          chargeProgress: false,
+          reason: prefersReducedMotion ? 'reduced-motion' : 'canvas-unavailable'
+        });
         return;
       }
 
       this.canvas = document.createElement('canvas');
-      this.canvas.className = 'project-card__pixel-canvas';
+      this.canvas.className = this.image.closest('.case-study__media')
+        ? 'case-study__pixel-canvas'
+        : 'project-card__pixel-canvas';
       this.canvas.setAttribute('aria-hidden', 'true');
       this.image.parentElement.appendChild(this.canvas);
       this.drawBlack();
+      if (this.cancelled || this.completed) return;
       this.image.dataset.pixelState = 'ready';
 
       if (typeof ResizeObserver !== 'undefined') {
@@ -376,7 +482,7 @@
       const lowContext = this.lowResolutionCanvas.getContext('2d');
       const context = this.canvas.getContext('2d');
       if (!lowContext || !context) {
-        this.complete({ chargeProgress: false });
+        this.complete({ chargeProgress: false, reason: 'canvas-context-unavailable' });
         return;
       }
 
@@ -425,19 +531,27 @@
     }
 
     start({ stagger = this.useStagger } = {}) {
-      if (this.started) return;
       this.startRequested = true;
       this.useStagger = stagger;
-      if (!this.canvas) return;
+      if (this.started || this.completed || this.cancelled) {
+        return this.lifecycleHandle;
+      }
+      if (!this.canvas) return this.lifecycleHandle;
       this.started = true;
       intersectionObserver?.unobserve(this.image);
       this.startTimer = window.setTimeout(() => {
+        this.startTimer = null;
+        if (this.completed || this.cancelled) return;
         this.image.dataset.pixelState = 'revealing';
+        this.settleStarted();
         this.animationFrame = requestAnimationFrame(time => this.tick(time));
       }, config.delay + (stagger ? this.index * config.stagger : 0));
+      return this.lifecycleHandle;
     }
 
     tick(time) {
+      this.animationFrame = null;
+      if (this.completed || this.cancelled) return;
       if (this.startTime === null) this.startTime = time;
       const linearProgress = Math.min(1, (time - this.startTime) / this.duration);
       const progress = getPacedProgress(linearProgress, this.paceProfile);
@@ -460,6 +574,7 @@
         this.hasDrawnPixelImage = true;
         this.draw(this.currentBlock);
       }
+      if (this.completed || !this.canvas) return;
 
       const fadeProgress = this.peakProgress <= config.fadeStart
         ? 0
@@ -477,35 +592,87 @@
       this.complete();
     }
 
-    complete({ showDone = true, chargeProgress = true } = {}) {
+    complete({ showDone = true, chargeProgress = true, reason = null } = {}) {
       if (this.completed) {
         if (!showDone) this.clearCompletionTimer();
-        return;
+        return this.lifecycleHandle;
       }
       this.completed = true;
-      if (this.animationFrame !== null) cancelAnimationFrame(this.animationFrame);
-      if (this.startTimer !== null) clearTimeout(this.startTimer);
+      if (this.animationFrame !== null) {
+        cancelAnimationFrame(this.animationFrame);
+        this.animationFrame = null;
+      }
+      if (this.startTimer !== null) {
+        clearTimeout(this.startTimer);
+        this.startTimer = null;
+      }
       intersectionObserver?.unobserve(this.image);
       this.resizeObserver?.disconnect();
+      this.resizeObserver = null;
       this.canvas?.remove();
       this.canvas = null;
       this.image.dataset.pixelState = 'complete';
       this.setProgress(100, { charge: chargeProgress });
+      if (!this.startedDeferred.settled) {
+        this.settleStarted('skipped', reason || 'completed-before-start');
+      }
+      this.settleCompleted('completed', reason);
       if (showDone && this.progressTag) {
         this.setCompletionTimer(() => this.showDone(), config.completeHold);
       }
+      return this.lifecycleHandle;
+    }
+
+    cancel() {
+      if (this.cancelled) return this.completedDeferred.promise;
+      this.cancelled = true;
+      this.prepareAbortController?.abort();
+      this.clearCompletionTimer();
+      if (this.animationFrame !== null) {
+        cancelAnimationFrame(this.animationFrame);
+        this.animationFrame = null;
+      }
+      if (this.startTimer !== null) {
+        clearTimeout(this.startTimer);
+        this.startTimer = null;
+      }
+      intersectionObserver?.unobserve(this.image);
+      this.resizeObserver?.disconnect();
+      this.resizeObserver = null;
+      this.canvas?.remove();
+      this.canvas = null;
+      this.image.dataset.pixelState = 'complete';
+      this.getDoneEffect()?.prepareHidden({ reserveSpace: false });
+      if (this.progressTag) {
+        this.progressTag.hidden = true;
+        this.progressTag.dataset.pixelProgressState = 'hidden';
+      }
+      if (!this.completed) {
+        this.completed = true;
+        this.settleStarted('cancelled', 'cancelled');
+        this.settleCompleted('cancelled', 'cancelled');
+      }
+      return this.completedDeferred.promise;
     }
 
     destroy() {
-      this.complete({ showDone: false, chargeProgress: false });
+      this.cancel();
       this.resetProgressTag();
       effects.delete(this.image);
     }
   }
 
+  function getScopedImages(scope = document) {
+    if (!scope) return [];
+    if (scope.matches?.(selector)) return [scope];
+    return typeof scope.querySelectorAll === 'function'
+      ? [...scope.querySelectorAll(selector)]
+      : [];
+  }
+
   function init(scope = document, { startImmediately = false } = {}) {
     syncProjectCardSizes(scope);
-    const images = [...scope.querySelectorAll(selector)]
+    const images = getScopedImages(scope)
       .filter(image => !effects.has(image));
     if (!images.length) return;
 
@@ -535,19 +702,36 @@
   }
 
   function replay(scope = document, options = {}) {
-    [...scope.querySelectorAll(selector)].forEach(image => {
+    getScopedImages(scope).forEach(image => {
       effects.get(image)?.destroy();
       delete image.dataset.pixelState;
     });
     init(scope, options);
   }
 
-  function start(scope = document) {
-    const images = scope.matches?.(selector)
-      ? [scope]
-      : [...scope.querySelectorAll(selector)];
-    images.forEach(image => {
-      effects.get(image)?.start({ stagger: false });
+  function start(scope = document, options = {}) {
+    const images = getScopedImages(scope);
+    if (images.some(image => !effects.has(image))) init(scope);
+    const handles = images
+      .map(image => effects.get(image)?.start({
+        stagger: false,
+        ...options
+      }))
+      .filter(Boolean);
+    const started = Promise.all(handles.map(handle => handle.started));
+    const completed = Promise.all(handles.map(handle => handle.completed));
+    let cancelled = false;
+
+    return Object.freeze({
+      started,
+      completed,
+      cancel() {
+        if (!cancelled) {
+          cancelled = true;
+          handles.forEach(handle => handle.cancel());
+        }
+        return completed;
+      }
     });
   }
 

@@ -128,17 +128,21 @@
   --space-10: 40px;
   --space-14: 56px;
 
-  /* Typography (12) */
+  /* Typography (16) */
   --font-family: "SF Mono Local", "SF Mono", "SFMono-Regular", ui-monospace, Menlo, Monaco, Consolas, monospace;
   --fw-regular: 400;
   --fw-medium: 500;
   --fw-semibold: 600;
   --fw-bold: 700;
   --fz-h1: 32px;
+  --fz-h2: 24px;
+  --fz-h3: 18px;
   --fz-body: 16px;
   --fz-paragraph: 14px;
   --fz-button-sm: 12px;
   --lh-h1: 36px;
+  --lh-h2: 32px;
+  --lh-h3: 28px;
   --lh-body: 24px;
   --lh-button-sm: 16px;
 
